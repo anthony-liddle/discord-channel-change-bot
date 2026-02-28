@@ -1,0 +1,41 @@
+{
+  "name": "discord-channel-change-bot",
+  "version": "1.0.0",
+  "description": "Discord bot that automatically rotates channel names on a weekly schedule",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/index.js",
+    "register": "node dist/register-commands.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
+  },
+  "engines": {
+    "node": ">=16.11.0"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "channel-rename",
+    "scheduler"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.3.0",
+    "@types/node-cron": "^3.0.11",
+    "eslint": "^10.0.2",
+    "husky": "^9.1.7",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  }
+}

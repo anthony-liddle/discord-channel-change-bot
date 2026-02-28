@@ -1,0 +1,39 @@
+{
+  "channelId": "YOUR_CHANNEL_ID_HERE",
+  "themes": [
+    {
+      "name": "weekly-theme-movies",
+      "message": "This week's theme is **Movies**! Share your favorite films, discuss recent releases, or recommend hidden gems."
+    },
+    {
+      "name": "weekly-theme-music",
+      "message": "This week's theme is **Music**! What are you listening to? Share playlists, artists, or concert experiences."
+    },
+    {
+      "name": "weekly-theme-games",
+      "message": "This week's theme is **Games**! Video games, board games, card games - what are you playing?"
+    },
+    {
+      "name": "weekly-theme-books",
+      "message": "This week's theme is **Books**! Share what you're reading, ask for recommendations, or discuss your favorites."
+    },
+    {
+      "name": "weekly-theme-food",
+      "message": "This week's theme is **Food**! Recipes, restaurant recommendations, cooking tips - let's talk food!"
+    },
+    {
+      "name": "weekly-theme-travel",
+      "message": "This week's theme is **Travel**! Share travel stories, dream destinations, or tips for fellow travelers."
+    },
+    {
+      "name": "weekly-theme-sports",
+      "message": "This week's theme is **Sports**! Discuss games, teams, athletes, or your own athletic pursuits."
+    },
+    {
+      "name": "weekly-theme-tech",
+      "message": "This week's theme is **Tech**! Gadgets, software, programming, AI - what's exciting in tech?"
+    }
+  ],
+  "schedule": "0 9 * * 1",
+  "timezone": "America/Los_Angeles"
+}
