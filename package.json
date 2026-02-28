@@ -21,6 +21,7 @@
     "channel-rename",
     "scheduler"
   ],
+  "packageManager": "pnpm@10.23.0",
   "license": "MIT",
   "dependencies": {
     "discord.js": "^14.14.1",
