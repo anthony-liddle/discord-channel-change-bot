@@ -12,8 +12,8 @@ importers:
         specifier: ^14.14.1
         version: 14.25.1
       dotenv:
-        specifier: ^16.3.1
-        version: 16.6.1
+        specifier: ^17.3.1
+        version: 17.3.1
       node-cron:
         specifier: ^3.0.3
         version: 3.0.3
@@ -418,8 +418,8 @@ packages:
     resolution: {integrity: sha512-QM8q3zDe58hqUqjraQOmzZ1LIH9SWQJTlEKCH4kJ2oQvLZk7RbQXvtDM2XEq3fwkV9CCvvH4LA0AV+ogFsBM2Q==}
     engines: {node: '>=8'}
 
-  dotenv@16.6.1:
-    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
+  dotenv@17.3.1:
+    resolution: {integrity: sha512-IO8C/dzEb6O3F9/twg6ZLXz164a2fhTnEWb95H23Dm4OuN+92NmEAlTrupP9VW6Jm3sO26tQlqyvyi4CsnY9GA==}
     engines: {node: '>=12'}
 
   emoji-regex@8.0.0:
@@ -1306,7 +1306,7 @@ snapshots:
     dependencies:
       is-obj: 2.0.0
 
-  dotenv@16.6.1: {}
+  dotenv@17.3.1: {}
 
   emoji-regex@8.0.0: {}
 
