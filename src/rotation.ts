@@ -2,6 +2,7 @@ import type { Client, TextChannel } from 'discord.js';
 import { PermissionFlagsBits } from 'discord.js';
 import type { Config, ThemeEntry, UpcomingTheme } from './types';
 import { getState, advanceState } from './state';
+import {getThemes} from './themes';
 
 let isRotating = false;
 
@@ -33,11 +34,11 @@ export function getThemeMessage(theme: ThemeEntry): string | null {
   return typeof theme === 'object' ? (theme.message ?? null) : null;
 }
 
+
 export function getUpcomingThemes(
-  config: Config,
+  themes: ThemeEntry[],
   count = 5,
 ): UpcomingTheme[] {
-  const { themes } = config;
   if (!themes?.length) return [];
 
   const state = getState();
@@ -130,7 +131,8 @@ export async function rotateTheme(
   console.log(`[${new Date().toISOString()}] Starting rotation`);
 
   try {
-    const { channelId, themes } = config;
+    const themes = await getThemes();
+    const { channelId } = config;
 
     if (!themes || themes.length === 0) {
       console.error('ERROR: No themes configured');

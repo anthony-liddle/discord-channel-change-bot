@@ -5,6 +5,7 @@ import { loadState } from './state';
 import { scheduleCronJob, stopScheduledTask } from './scheduler';
 import { rotateTheme, validatePermissions, getThemeName } from './rotation';
 import { getCommandHandler } from './commands';
+import {loadThemes} from './themes';
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -12,13 +13,14 @@ if (!token) {
   process.exit(1);
 }
 
-loadConfig();
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
 client.once('ready', async () => {
+  loadConfig();
+  await loadThemes();
   console.log(`Logged in as ${client.user!.tag}`);
 
   const config = getConfig();
