@@ -29,8 +29,6 @@ const commands: Record<string, CommandHandler> = {
   'reload-config': reloadConfigCmd,
 };
 
-export function getCommandHandler(
-  name: string,
-): CommandHandler | undefined {
+export function getCommandHandler(name: string): CommandHandler | undefined {
   return commands[name];
 }

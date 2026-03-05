@@ -33,10 +33,7 @@ export function getThemeMessage(theme: ThemeEntry): string | null {
   return typeof theme === 'object' ? (theme.message ?? null) : null;
 }
 
-export function getUpcomingThemes(
-  config: Config,
-  count = 5,
-): UpcomingTheme[] {
+export function getUpcomingThemes(config: Config, count = 5): UpcomingTheme[] {
   const { themes } = config;
   if (!themes?.length) return [];
 
@@ -72,9 +69,7 @@ export async function validatePermissions(
       return false;
     }
 
-    const permissions = (channel as TextChannel).permissionsFor(
-      client.user!,
-    );
+    const permissions = (channel as TextChannel).permissionsFor(client.user!);
     if (!permissions) {
       console.error('ERROR: Could not resolve bot permissions');
       return false;
@@ -110,9 +105,7 @@ export async function validatePermissions(
     );
     return true;
   } catch (err) {
-    console.error(
-      `ERROR validating permissions: ${(err as Error).message}`,
-    );
+    console.error(`ERROR validating permissions: ${(err as Error).message}`);
     return false;
   }
 }
@@ -159,9 +152,7 @@ export async function rotateTheme(
     }
 
     if (channel.name === newName) {
-      console.log(
-        `Channel already named "${newName}", skipping rename`,
-      );
+      console.log(`Channel already named "${newName}", skipping rename`);
       await advanceState(themes.length);
       return true;
     }

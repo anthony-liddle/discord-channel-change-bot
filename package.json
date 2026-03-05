@@ -9,6 +9,8 @@
     "register": "node dist/register-commands.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "prepare": "husky"
   },
@@ -23,6 +25,15 @@
   ],
   "packageManager": "pnpm@10.23.0",
   "license": "MIT",
+  "lint-staged": {
+    "*.{ts,js}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
   "dependencies": {
     "discord.js": "^14.14.1",
     "dotenv": "^17.3.1",
@@ -35,7 +46,10 @@
     "@types/node": "^25.3.3",
     "@types/node-cron": "^3.0.11",
     "eslint": "^10.0.2",
+    "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
+    "lint-staged": "^16.3.2",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1"
   }

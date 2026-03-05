@@ -32,7 +32,6 @@ export function getState(): State {
 }
 
 export async function advanceState(themesLength: number): Promise<void> {
-  currentState.currentIndex =
-    (currentState.currentIndex + 1) % themesLength;
+  currentState.currentIndex = (currentState.currentIndex + 1) % themesLength;
   await saveState(currentState);
 }
