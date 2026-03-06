@@ -4,24 +4,25 @@ The bot automatically renames a designated channel on a weekly schedule, rotatin
 
 ## Commands
 
-All commands are slash commands. Type `/` in any channel to find them.
+All commands are slash commands under `/theme-bot`. Type `/theme-bot` in any channel to see them.
 
-| Command          | Who can use it |
-| ---------------- | -------------- |
-| `/themes`        | Everyone       |
-| `/add-theme`     | Admins only    |
-| `/rotate-now`    | Admins only    |
-| `/reload-config` | Admins only    |
+| Command                     | Who can use it |
+| --------------------------- | -------------- |
+| `/theme-bot themes`         | Everyone       |
+| `/theme-bot add-theme`      | Admins only    |
+| `/theme-bot rotate-now`     | Admins only    |
+| `/theme-bot reload-config`  | Admins only    |
+| `/theme-bot config channel` | Admins only    |
 
 ---
 
-### `/themes`
+### `/theme-bot themes`
 
 Shows the next 5 upcoming themes in the rotation and which one is currently active. Useful for checking where you are in the cycle.
 
 ---
 
-### `/add-theme`
+### `/theme-bot add-theme`
 
 Opens a form where you can add a new theme to the rotation. You'll be asked for:
 
@@ -32,33 +33,29 @@ The new theme is added to the end of the rotation queue.
 
 ---
 
-### `/rotate-now`
+### `/theme-bot rotate-now`
 
 Immediately rotates to the next theme without waiting for the scheduled time. Use this if you want to kick off a new theme early or test that things are working. The bot will confirm which theme was applied.
 
 ---
 
-### `/reload-config`
+### `/theme-bot reload-config`
 
 Reloads the bot's configuration without needing a restart. Use this if the bot owner has made changes to the schedule or timezone settings and you need them to take effect right away.
+
+---
+
+### `/theme-bot config channel`
+
+Opens a channel picker so you can choose which channel the bot renames each rotation. The current channel is pre-selected. Pick a new one and confirm — the change takes effect immediately for the next rotation.
+
+> **Note:** You must have Administrator permission to use this command.
 
 ---
 
 ## Things to know
 
 - **Rotation happens automatically** on the configured schedule (typically Monday mornings). You don't need to do anything for the weekly rotation to run.
-- **Theme order is fixed** — themes rotate in the order they were added. Use `/themes` to see what's coming up.
+- **Theme order is fixed** — themes rotate in the order they were added. Use `/theme-bot themes` to see what's coming up.
 - **The bot needs the right permissions** — if it ever stops renaming the channel, check that it still has `Manage Channels` and `Send Messages` permissions in that channel.
-- **Discord rate limits channel renames** to 2 per 10 minutes. The weekly schedule respects this, but avoid using `/rotate-now` in quick succession.
-
-## Changing the designated channel
-
-The channel the bot renames is set in a configuration file on the server where the bot is hosted — it can't be changed through Discord directly. To change it, contact the bot owner. They'll need the **Channel ID** of the channel you want to use.
-
-To find a channel ID:
-
-1. Open Discord Settings → Advanced → turn on **Developer Mode**
-2. Right-click the channel you want
-3. Click **Copy Channel ID**
-
-Send that ID to the bot owner and they can update the configuration.
+- **Discord rate limits channel renames** to 2 per 10 minutes. The weekly schedule respects this, but avoid using `/theme-bot rotate-now` in quick succession.

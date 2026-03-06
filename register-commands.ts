@@ -15,20 +15,44 @@ const clientId = requireEnv('CLIENT_ID');
 
 const commands = [
   new SlashCommandBuilder()
-    .setName('themes')
-    .setDescription('Preview the upcoming theme rotation'),
-
-  new SlashCommandBuilder()
-    .setName('rotate-now')
-    .setDescription('Immediately rotate to the next theme (Admin only)'),
-
-  new SlashCommandBuilder()
-    .setName('reload-config')
-    .setDescription('Reload the config file without restarting (Admin only)'),
-
-  new SlashCommandBuilder()
-    .setName('add-theme')
-    .setDescription('Add a theme using "Channel Name", and "Theme Message"'),
+    .setName('theme-bot')
+    .setDescription('Theme rotation bot commands')
+    .addSubcommand((sub) =>
+      sub
+        .setName('themes')
+        .setDescription('Preview the upcoming theme rotation'),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('rotate-now')
+        .setDescription('Immediately rotate to the next theme (Admin only)'),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('reload-config')
+        .setDescription(
+          'Reload the config file without restarting (Admin only)',
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('add-theme')
+        .setDescription(
+          'Add a theme using "Channel Name", and "Theme Message"',
+        ),
+    )
+    .addSubcommandGroup((group) =>
+      group
+        .setName('config')
+        .setDescription('Configure bot settings')
+        .addSubcommand((sub) =>
+          sub
+            .setName('channel')
+            .setDescription(
+              'Set the channel to rename each rotation (Admin only)',
+            ),
+        ),
+    ),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(token);

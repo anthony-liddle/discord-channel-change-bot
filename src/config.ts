@@ -1,4 +1,5 @@
 import fs from 'fs';
+import fsp from 'fs/promises';
 import path from 'path';
 import type { Config } from './types';
 
@@ -33,4 +34,11 @@ export function getConfig(): Config {
 export function reloadConfig(): Config {
   cachedConfig = null;
   return loadConfig();
+}
+
+export async function saveConfig(config: Config): Promise<void> {
+  const tempPath = `${CONFIG_PATH}.tmp`;
+  await fsp.writeFile(tempPath, JSON.stringify(config, null, 2));
+  await fsp.rename(tempPath, CONFIG_PATH);
+  cachedConfig = config;
 }
