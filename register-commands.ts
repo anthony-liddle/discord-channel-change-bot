@@ -24,14 +24,11 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('reload-config')
-    .setDescription(
-      'Reload the config file without restarting (Admin only)',
-    ),
+    .setDescription('Reload the config file without restarting (Admin only)'),
+
   new SlashCommandBuilder()
     .setName('add-theme')
-    .setDescription(
-      'Add a theme using "Channel Name", and "Theme Message"'
-    )
+    .setDescription('Add a theme using "Channel Name", and "Theme Message"'),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(token);
@@ -45,9 +42,7 @@ async function registerCommands(): Promise<void> {
     });
 
     console.log('Slash commands registered successfully!');
-    console.log(
-      'Note: Global commands may take up to 1 hour to appear.',
-    );
+    console.log('Note: Global commands may take up to 1 hour to appear.');
     console.log(
       'For instant updates during development, use guild-specific commands.',
     );

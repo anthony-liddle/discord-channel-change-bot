@@ -1,4 +1,4 @@
-import { ThemeEntry, Themes} from './types';
+import { ThemeEntry, Themes } from './types';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -8,45 +8,44 @@ let cachedThemes: ThemeEntry[] | null = null;
 
 export async function addTheme(name: string, message: string): Promise<void> {
   const themes = await getThemes();
-  const tempPath = `${THEMES_PATH}.tmp`
+  const tempPath = `${THEMES_PATH}.tmp`;
 
-  themes.push({name, message});
-  cachedThemes = themes
+  themes.push({ name, message });
+  cachedThemes = themes;
 
-  await fs.writeFile(tempPath, JSON.stringify({themes: cachedThemes}));
+  await fs.writeFile(tempPath, JSON.stringify({ themes: cachedThemes }));
   await fs.rename(tempPath, THEMES_PATH);
 }
 
 export async function loadThemes(): Promise<ThemeEntry[]> {
-  try{
+  try {
     let raw = JSON.parse(await fs.readFile(THEMES_PATH, 'utf8')) as Themes;
 
     if (!Array.isArray(raw.themes) || raw.themes.length === 0) {
-      raw = {themes: []}
+      raw = { themes: [] };
     }
 
     cachedThemes = raw.themes;
-    return raw.themes
-  } catch(err) {
-    console.error(`Could not retrieve themes: ${err}`)
+    return raw.themes;
+  } catch (err) {
+    console.error(`Could not retrieve themes: ${err}`);
     return [];
   }
 }
 
 export async function getThemes(): Promise<ThemeEntry[]> {
   try {
-    if(!cachedThemes) {
+    if (!cachedThemes) {
       return await loadThemes();
     }
     return cachedThemes;
-  } catch(err) {
+  } catch (err) {
     console.log(`Could not retrieve themes: ${err}`);
     return [];
   }
 }
 
 export async function reloadThemes(): Promise<ThemeEntry[]> {
-  cachedThemes= null;
+  cachedThemes = null;
   return await loadThemes();
 }
-

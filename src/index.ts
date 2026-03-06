@@ -5,14 +5,13 @@ import { loadState } from './state';
 import { scheduleCronJob, stopScheduledTask } from './scheduler';
 import { rotateTheme, validatePermissions, getThemeName } from './rotation';
 import { getCommandHandler } from './commands';
-import {loadThemes} from './themes';
+import { loadThemes } from './themes';
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
   console.error('ERROR: DISCORD_TOKEN not set in environment variables');
   process.exit(1);
 }
-
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],

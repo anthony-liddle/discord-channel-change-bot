@@ -21,7 +21,7 @@ export class Config {
 }
 
 export interface Themes {
-  themes: ThemeEntry[]
+  themes: ThemeEntry[];
 }
 
 export interface State {

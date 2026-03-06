@@ -11,10 +11,12 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 ### Reporting Bugs
 
 Before submitting a bug report:
+
 1. Check the [existing issues](../../issues) to avoid duplicates
 2. Ensure the bug is reproducible in the latest version
 
 When submitting a bug report, include:
+
 - A clear, descriptive title
 - Steps to reproduce the issue
 - Expected vs actual behavior
@@ -24,6 +26,7 @@ When submitting a bug report, include:
 ### Suggesting Features
 
 Feature suggestions are welcome! Please:
+
 1. Check existing issues and discussions first
 2. Provide a clear use case for the feature
 3. Explain how it benefits users
@@ -57,21 +60,25 @@ npm run build
 ## Coding Standards
 
 ### TypeScript
+
 - Use TypeScript for all new code
 - Define interfaces for props and state
 - Avoid `any` types; use proper typing
 
 ### React
+
 - Use functional components with hooks
 - Keep components focused and single-purpose
 - Extract reusable logic into custom hooks
 
 ### CSS
+
 - Use CSS files alongside components
 - Follow existing naming conventions (BEM-style)
 - Avoid inline styles except for dynamic values
 
 ### File Organization
+
 - Place components in `src/components/ComponentName/`
 - Include `ComponentName.tsx`, `ComponentName.css`, and `index.ts`
 - Keep related utilities in `src/utils/`
@@ -79,6 +86,7 @@ npm run build
 ## Commit Messages
 
 Use clear, descriptive commit messages:
+
 - `feat: add velocity editing to note editor`
 - `fix: resolve audio crackling on rapid note playback`
 - `docs: update integration instructions`
@@ -87,6 +95,7 @@ Use clear, descriptive commit messages:
 ## Testing
 
 Currently, the project uses TypeScript compilation as the primary validation:
+
 ```bash
 npm run build
 ```
@@ -96,12 +105,14 @@ Ensure the build completes without errors before submitting a PR.
 ## Areas for Contribution
 
 ### Good First Issues
+
 - UI/UX improvements
 - Documentation updates
 - Accessibility enhancements
 - Additional instrument presets
 
 ### Larger Contributions
+
 - New effects (reverb, chorus, etc.)
 - MIDI import/export
 - Keyboard shortcuts

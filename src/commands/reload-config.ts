@@ -2,7 +2,7 @@ import type { CommandHandler } from '../types';
 import { reloadConfig } from '../config';
 import { scheduleCronJob } from '../scheduler';
 import { requireAdmin } from './index';
-import {reloadThemes} from '../themes';
+import { reloadThemes } from '../themes';
 
 export const reloadConfigCmd: CommandHandler = async (interaction) => {
   if (!requireAdmin(interaction)) return;
@@ -30,10 +30,7 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
     try {
       const { getConfig } = await import('../config');
       scheduleCronJob(schedule, timezone, () => {
-        rotateTheme(
-          interaction.client,
-          getConfig(),
-        );
+        rotateTheme(interaction.client, getConfig());
       });
 
       await interaction.reply({

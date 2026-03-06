@@ -2,7 +2,7 @@ import type { Client, TextChannel } from 'discord.js';
 import { PermissionFlagsBits } from 'discord.js';
 import type { Config, ThemeEntry, UpcomingTheme } from './types';
 import { getState, advanceState } from './state';
-import {getThemes} from './themes';
+import { getThemes } from './themes';
 
 let isRotating = false;
 
@@ -33,7 +33,6 @@ export function getThemeName(theme: ThemeEntry): string {
 export function getThemeMessage(theme: ThemeEntry): string | null {
   return typeof theme === 'object' ? (theme.message ?? null) : null;
 }
-
 
 export function getUpcomingThemes(
   themes: ThemeEntry[],
@@ -73,9 +72,7 @@ export async function validatePermissions(
       return false;
     }
 
-    const permissions = (channel as TextChannel).permissionsFor(
-      client.user!,
-    );
+    const permissions = (channel as TextChannel).permissionsFor(client.user!);
     if (!permissions) {
       console.error('ERROR: Could not resolve bot permissions');
       return false;
@@ -111,9 +108,7 @@ export async function validatePermissions(
     );
     return true;
   } catch (err) {
-    console.error(
-      `ERROR validating permissions: ${(err as Error).message}`,
-    );
+    console.error(`ERROR validating permissions: ${(err as Error).message}`);
     return false;
   }
 }
@@ -161,9 +156,7 @@ export async function rotateTheme(
     }
 
     if (channel.name === newName) {
-      console.log(
-        `Channel already named "${newName}", skipping rename`,
-      );
+      console.log(`Channel already named "${newName}", skipping rename`);
       await advanceState(themes.length);
       return true;
     }

@@ -1,6 +1,6 @@
 {
-  "channelId":"",
-  "themes":[],
+  "channelId": "",
+  "themes": [],
   "schedule": "0 9 * * 1",
   "timezone": "America/Los_Angeles"
 }

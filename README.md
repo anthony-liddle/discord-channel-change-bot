@@ -41,18 +41,21 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
 ### 3. Configure the Bot
 
 1. Copy the example files:
+
    ```bash
    cp .env.example .env
    cp config.example.json config.json
    ```
 
 2. Edit `.env` with your credentials:
+
    ```
    DISCORD_TOKEN=your_bot_token_here
    CLIENT_ID=your_client_id_here
    ```
 
 3. Edit `config.json`:
+
    ```json
    {
      "channelId": "123456789012345678",
@@ -62,6 +65,7 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    ```
 
 4. Edit `themes.json` (created on first startup):
+
    ```json
    {
      "themes": [
@@ -77,7 +81,7 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
          "name": "weekly-games",
          "message": "This week's theme is **Games**! What are you playing?"
        }
-     ],
+     ]
    }
    ```
 
@@ -96,6 +100,7 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
 The schedule uses standard cron syntax: `minute hour day month weekday`
 
 Examples:
+
 - `0 9 * * 1` - Every Monday at 9:00 AM
 - `0 0 * * 0` - Every Sunday at midnight
 - `0 12 * * 5` - Every Friday at noon
@@ -121,12 +126,12 @@ pnpm start
 
 ## Slash Commands
 
-| Command | Description | Permission |
-|---------|-------------|------------|
-| `/themes` | Preview the next 5 upcoming themes | Everyone |
-| `/add-theme` | Add theme to list of rotations via modal | Administrator |
-| `/rotate-now` | Immediately rotate to the next theme | Administrator |
-| `/reload-config` | Reload config.json without restarting | Administrator |
+| Command          | Description                              | Permission    |
+| ---------------- | ---------------------------------------- | ------------- |
+| `/themes`        | Preview the next 5 upcoming themes       | Everyone      |
+| `/add-theme`     | Add theme to list of rotations via modal | Administrator |
+| `/rotate-now`    | Immediately rotate to the next theme     | Administrator |
+| `/reload-config` | Reload config.json without restarting    | Administrator |
 
 ## File Structure
 
@@ -190,6 +195,7 @@ Then modify `src/index.ts` to iterate over channels and create separate cron job
 ### Multiple Servers
 
 The bot already works across multiple servers. Just:
+
 1. Invite it to each server
 2. Add multiple channel configs (as shown above)
 3. Ensure the bot has `Manage Channels` and `Send Messages` permissions in each server
@@ -197,6 +203,7 @@ The bot already works across multiple servers. Just:
 ### Database Storage
 
 For production deployments, consider replacing the JSON file storage with:
+
 - SQLite (via `better-sqlite3`)
 - Redis (via `ioredis`)
 - PostgreSQL (via `pg`)
@@ -215,20 +222,24 @@ pm2 startup
 ## Troubleshooting
 
 ### Bot can't rename channel
+
 - Ensure the bot has `Manage Channels` permission
 - Check that the bot's role is positioned above the channel in the role hierarchy
 - Verify the channel ID is correct
 
 ### Announcement message not posting
+
 - Ensure the bot has `Send Messages` permission in the channel
 - Check the console logs for error messages
 
 ### Commands not appearing
+
 - Global commands can take up to 1 hour to propagate
 - Try restarting Discord
 - Ensure you ran `pnpm register`
 
 ### Schedule not triggering
+
 - Check your timezone setting matches your expectations
 - Verify the cron expression is valid at [crontab.guru](https://crontab.guru/)
 

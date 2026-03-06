@@ -28,11 +28,9 @@ const commands: Record<string, CommandHandler> = {
   themes,
   'rotate-now': rotateNow,
   'reload-config': reloadConfigCmd,
-  'add-theme': addThemeCmd
+  'add-theme': addThemeCmd,
 };
 
-export function getCommandHandler(
-  name: string,
-): CommandHandler | undefined {
+export function getCommandHandler(name: string): CommandHandler | undefined {
   return commands[name];
 }

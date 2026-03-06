@@ -1,9 +1,9 @@
 import type { CommandHandler } from '../types';
 import { getUpcomingThemes } from '../rotation';
-import {getThemes} from '../themes';
+import { getThemes } from '../themes';
 
 export const themes: CommandHandler = async (interaction, context) => {
-  const themes = await getThemes()
+  const themes = await getThemes();
   const upcoming = getUpcomingThemes(themes, 5);
 
   let response = '**Upcoming Themes:**\n';
