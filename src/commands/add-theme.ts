@@ -51,7 +51,7 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
   try {
     modalInteraction = await interaction.awaitModalSubmit({
       filter,
-      time: 30_000,
+      time: 5 * 60 * 1000,
     });
     const name = modalInteraction.fields.getTextInputValue('themeName');
     const message = modalInteraction.fields.getTextInputValue('channelMessage');
