@@ -25,6 +25,10 @@ const commands = [
   new SlashCommandBuilder()
     .setName('reload-config')
     .setDescription('Reload the config file without restarting (Admin only)'),
+
+  new SlashCommandBuilder()
+    .setName('add-theme')
+    .setDescription('Add a theme using "Channel Name", and "Theme Message"'),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(token);

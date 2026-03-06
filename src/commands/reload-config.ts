@@ -2,14 +2,16 @@ import type { CommandHandler } from '../types';
 import { reloadConfig } from '../config';
 import { scheduleCronJob } from '../scheduler';
 import { requireAdmin } from './index';
+import { reloadThemes } from '../themes';
 
 export const reloadConfigCmd: CommandHandler = async (interaction) => {
   if (!requireAdmin(interaction)) return;
 
   try {
     const config = reloadConfig();
+    const themes = await reloadThemes();
 
-    if (!config.themes?.length) {
+    if (!themes?.length) {
       console.warn('Config reloaded with no themes configured');
       await interaction.reply({
         content:
@@ -32,12 +34,12 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
       });
 
       await interaction.reply({
-        content: `Config reloaded! ${config.themes.length} themes loaded. Cron rescheduled: ${schedule} (${timezone})`,
+        content: `Config reloaded! ${themes.length} themes loaded. Cron rescheduled: ${schedule} (${timezone})`,
         ephemeral: true,
       });
     } catch {
       await interaction.reply({
-        content: `Config reloaded with ${config.themes.length} themes, but cron schedule is invalid: ${schedule}`,
+        content: `Config reloaded with ${themes.length} themes, but cron schedule is invalid: ${schedule}`,
         ephemeral: true,
       });
     }

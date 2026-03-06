@@ -18,9 +18,6 @@ export function loadConfig(): Config {
   if (!raw.channelId || typeof raw.channelId !== 'string') {
     throw new Error('config.json must contain a valid "channelId" string');
   }
-  if (!Array.isArray(raw.themes) || raw.themes.length === 0) {
-    throw new Error('config.json must contain a non-empty "themes" array');
-  }
 
   cachedConfig = raw;
   return raw;

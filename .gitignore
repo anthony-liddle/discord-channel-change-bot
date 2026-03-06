@@ -13,9 +13,16 @@ config.json
 # State file (optional - you may want to track this)
 state.json
 
+# Themes file (optional - you may want to track this)
+themes.json
+
 # Logs
 *.log
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Vanilla NPM
+package-lock.json
+

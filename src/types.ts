@@ -9,11 +9,19 @@ export type LegacyTheme = string;
 
 export type ThemeEntry = Theme | LegacyTheme;
 
-export interface Config {
+export class Config {
   channelId: string;
   themes: ThemeEntry[];
   schedule?: string;
   timezone?: string;
+  constructor() {
+    this.channelId = '';
+    this.themes = [];
+  }
+}
+
+export interface Themes {
+  themes: ThemeEntry[];
 }
 
 export interface State {

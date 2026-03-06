@@ -59,6 +59,15 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    ```json
    {
      "channelId": "123456789012345678",
+     "schedule": "0 9 * * 1",
+     "timezone": "America/New_York"
+   }
+   ```
+
+4. Edit `themes.json` (created on first startup):
+
+   ```json
+   {
      "themes": [
        {
          "name": "weekly-movies",
@@ -72,9 +81,7 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
          "name": "weekly-games",
          "message": "This week's theme is **Games**! What are you playing?"
        }
-     ],
-     "schedule": "0 9 * * 1",
-     "timezone": "America/New_York"
+     ]
    }
    ```
 
@@ -119,11 +126,12 @@ pnpm start
 
 ## Slash Commands
 
-| Command          | Description                           | Permission    |
-| ---------------- | ------------------------------------- | ------------- |
-| `/themes`        | Preview the next 5 upcoming themes    | Everyone      |
-| `/rotate-now`    | Immediately rotate to the next theme  | Administrator |
-| `/reload-config` | Reload config.json without restarting | Administrator |
+| Command          | Description                              | Permission    |
+| ---------------- | ---------------------------------------- | ------------- |
+| `/themes`        | Preview the next 5 upcoming themes       | Everyone      |
+| `/add-theme`     | Add theme to list of rotations via modal | Administrator |
+| `/rotate-now`    | Immediately rotate to the next theme     | Administrator |
+| `/reload-config` | Reload config.json without restarting    | Administrator |
 
 ## File Structure
 
@@ -144,6 +152,7 @@ discord-channel-change-bot/
 ├── register-commands.ts      # Slash command registration script
 ├── config.json               # Your configuration (create from example)
 ├── config.example.json       # Example configuration
+├── themes.json               # Auto-generated on startup, tracks themes array
 ├── state.json                # Auto-generated, tracks current theme index
 ├── .env                      # Your secrets (create from example)
 ├── .env.example              # Example environment variables
