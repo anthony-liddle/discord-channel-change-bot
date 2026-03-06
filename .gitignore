@@ -19,3 +19,7 @@ state.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# Vanilla NPM
+#package-lock.json
+

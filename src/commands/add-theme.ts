@@ -53,7 +53,7 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
       });
     })
     .catch(async (err) => {
-      await interaction.editReply({
+      await interaction.followUp({
         content: 'Adding theme failed. Check the bot logs for details.'
       });
       console.error(err);
