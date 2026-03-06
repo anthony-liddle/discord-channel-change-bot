@@ -50,3 +50,15 @@ Reloads the bot's configuration without needing a restart. Use this if the bot o
 - **Theme order is fixed** — themes rotate in the order they were added. Use `/themes` to see what's coming up.
 - **The bot needs the right permissions** — if it ever stops renaming the channel, check that it still has `Manage Channels` and `Send Messages` permissions in that channel.
 - **Discord rate limits channel renames** to 2 per 10 minutes. The weekly schedule respects this, but avoid using `/rotate-now` in quick succession.
+
+## Changing the designated channel
+
+The channel the bot renames is set in a configuration file on the server where the bot is hosted — it can't be changed through Discord directly. To change it, contact the bot owner. They'll need the **Channel ID** of the channel you want to use.
+
+To find a channel ID:
+
+1. Open Discord Settings → Advanced → turn on **Developer Mode**
+2. Right-click the channel you want
+3. Click **Copy Channel ID**
+
+Send that ID to the bot owner and they can update the configuration.
