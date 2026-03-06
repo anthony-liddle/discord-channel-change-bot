@@ -19,7 +19,7 @@ const client = new Client({
 
 client.once('ready', async () => {
   loadConfig();
-  await loadThemes();
+  const themes = await loadThemes();
   console.log(`Logged in as ${client.user!.tag}`);
 
   const config = getConfig();
@@ -48,7 +48,7 @@ client.once('ready', async () => {
   const state = getState();
   console.log(`Current theme index: ${state.currentIndex}`);
   console.log(
-    `Next theme: ${getThemeName(config.themes[state.currentIndex % config.themes.length])}`,
+    `Next theme: ${getThemeName(themes[state.currentIndex % themes.length])}`,
   );
   console.log('Bot is ready!');
 });

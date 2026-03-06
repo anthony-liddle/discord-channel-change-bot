@@ -2,6 +2,7 @@ import type { CommandHandler } from '../types';
 import { getState } from '../state';
 import { rotateTheme, getThemeName, isRotationInProgress } from '../rotation';
 import { requireAdmin } from './index';
+import { getThemes } from '../themes';
 
 export const rotateNow: CommandHandler = async (interaction, context) => {
   if (!requireAdmin(interaction)) return;
@@ -18,7 +19,7 @@ export const rotateNow: CommandHandler = async (interaction, context) => {
   const success = await rotateTheme(context.client, context.config);
 
   if (success) {
-    const { themes } = context.config;
+    const themes = await getThemes();
     const state = getState();
     const prevIndex = (state.currentIndex - 1 + themes.length) % themes.length;
     const currentTheme = themes[prevIndex];

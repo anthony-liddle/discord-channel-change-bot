@@ -86,7 +86,8 @@ export async function validatePermissions(
       missingPerms.push('Manage Channels');
     }
 
-    const hasMessageThemes = config.themes.some(
+    const themes = await getThemes();
+    const hasMessageThemes = themes.some(
       (t) => typeof t === 'object' && typeof t.message === 'string',
     );
     if (
