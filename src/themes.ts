@@ -44,3 +44,39 @@ export async function reloadThemes(): Promise<ThemeEntry[]> {
   cachedThemes = null;
   return await loadThemes();
 }
+
+export async function deleteTheme(name: string): Promise<void> {
+  const themes = await getThemes();
+  const index = themes.findIndex(
+    (t) => (typeof t === 'string' ? t : t.name) === name,
+  );
+  if (index === -1) throw new Error(`Theme "${name}" not found`);
+
+  const updated = [...themes.slice(0, index), ...themes.slice(index + 1)];
+  cachedThemes = updated;
+
+  const tempPath = `${THEMES_PATH}.tmp`;
+  await fs.writeFile(tempPath, JSON.stringify({ themes: updated }));
+  await fs.rename(tempPath, THEMES_PATH);
+}
+
+export async function updateTheme(
+  name: string,
+  newName: string,
+  newMessage: string,
+): Promise<void> {
+  const themes = await getThemes();
+  const index = themes.findIndex(
+    (t) => (typeof t === 'string' ? t : t.name) === name,
+  );
+  if (index === -1) throw new Error(`Theme "${name}" not found`);
+
+  const updated = themes.map((t, i) =>
+    i === index ? { name: newName, message: newMessage } : t,
+  );
+  cachedThemes = updated;
+
+  const tempPath = `${THEMES_PATH}.tmp`;
+  await fs.writeFile(tempPath, JSON.stringify({ themes: updated }));
+  await fs.rename(tempPath, THEMES_PATH);
+}
