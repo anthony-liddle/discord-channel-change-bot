@@ -47,8 +47,9 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
   const filter = (modalInteraction: ModalSubmitInteraction) =>
     modalInteraction.customId === `createThemeModal-${interaction.user.id}`;
 
+  let modalInteraction: ModalSubmitInteraction | undefined;
   try {
-    const modalInteraction = await interaction.awaitModalSubmit({
+    modalInteraction = await interaction.awaitModalSubmit({
       filter,
       time: 30_000,
     });
@@ -60,5 +61,11 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
     });
   } catch (err) {
     console.error(err);
+    if (modalInteraction) {
+      await modalInteraction.reply({
+        content: 'Failed to save theme. Check the bot logs for details.',
+        ephemeral: true,
+      });
+    }
   }
 };
