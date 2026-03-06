@@ -64,7 +64,7 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    }
    ```
 
-4. Edit `themes.json` (created on first startup):
+4. Create `themes.json` with your initial themes:
 
    ```json
    {
@@ -88,6 +88,8 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    Each theme has:
    - `name`: The channel name (Discord channel naming rules apply - lowercase, no spaces)
    - `message`: The announcement posted when this theme becomes active (supports Discord markdown)
+
+   > **Note:** You can also add themes at runtime using the `/add-theme` slash command, which writes to this file automatically. Manual edits to `themes.json` take effect after running `/reload-config`.
 
 #### Getting the Channel ID
 
@@ -147,12 +149,13 @@ discord-channel-change-bot/
 │   └── commands/
 │       ├── index.ts          # Command router
 │       ├── themes.ts         # /themes handler
+│       ├── add-theme.ts      # /add-theme handler
 │       ├── rotate-now.ts     # /rotate-now handler
 │       └── reload-config.ts  # /reload-config handler
 ├── register-commands.ts      # Slash command registration script
 ├── config.json               # Your configuration (create from example)
 ├── config.example.json       # Example configuration
-├── themes.json               # Auto-generated on startup, tracks themes array
+├── themes.json               # Tracks themes; create manually or via /add-theme
 ├── state.json                # Auto-generated, tracks current theme index
 ├── .env                      # Your secrets (create from example)
 ├── .env.example              # Example environment variables
@@ -165,32 +168,7 @@ discord-channel-change-bot/
 
 ### Multiple Channels
 
-To support multiple channels, modify `config.json`:
-
-```json
-{
-  "channels": [
-    {
-      "channelId": "123456789",
-      "themes": [
-        { "name": "theme-a", "message": "Welcome to Theme A!" },
-        { "name": "theme-b", "message": "Welcome to Theme B!" }
-      ],
-      "schedule": "0 9 * * 1"
-    },
-    {
-      "channelId": "987654321",
-      "themes": [
-        { "name": "other-a", "message": "Other channel, Theme A!" },
-        { "name": "other-b", "message": "Other channel, Theme B!" }
-      ],
-      "schedule": "0 12 * * 3"
-    }
-  ]
-}
-```
-
-Then modify `src/index.ts` to iterate over channels and create separate cron jobs.
+To support multiple channels, you would extend `config.json` to hold an array of channel configs (each with a `channelId` and `schedule`), give each its own `themes.json`-equivalent, and modify `src/index.ts` to iterate over the channels and create separate cron jobs — one per channel.
 
 ### Multiple Servers
 

@@ -44,25 +44,21 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
 
   await interaction.showModal(modal);
 
-  // Wait for modal to be submitted
   const filter = (modalInteraction: ModalSubmitInteraction) =>
     modalInteraction.customId === `createThemeModal-${interaction.user.id}`;
 
-  interaction
-    .awaitModalSubmit({ filter, time: 30_000 })
-    .then(async (modalInteraction) => {
-      const name = modalInteraction.fields.getTextInputValue('themeName');
-      const message =
-        modalInteraction.fields.getTextInputValue('channelMessage');
-      await addTheme(name, message);
-      await modalInteraction.reply({
-        content: `Theme Added! New theme: \`${getThemeName(name)}\``,
-      });
-    })
-    .catch(async (err) => {
-      await interaction.followUp({
-        content: 'Adding theme failed. Check the bot logs for details.',
-      });
-      console.error(err);
+  try {
+    const modalInteraction = await interaction.awaitModalSubmit({
+      filter,
+      time: 30_000,
     });
+    const name = modalInteraction.fields.getTextInputValue('themeName');
+    const message = modalInteraction.fields.getTextInputValue('channelMessage');
+    await addTheme(name, message);
+    await modalInteraction.reply({
+      content: `Theme Added! New theme: \`${getThemeName(name)}\``,
+    });
+  } catch (err) {
+    console.error(err);
+  }
 };

@@ -34,15 +34,10 @@ export async function loadThemes(): Promise<ThemeEntry[]> {
 }
 
 export async function getThemes(): Promise<ThemeEntry[]> {
-  try {
-    if (!cachedThemes) {
-      return await loadThemes();
-    }
-    return cachedThemes;
-  } catch (err) {
-    console.log(`Could not retrieve themes: ${err}`);
-    return [];
+  if (!cachedThemes) {
+    return await loadThemes();
   }
+  return cachedThemes;
 }
 
 export async function reloadThemes(): Promise<ThemeEntry[]> {
