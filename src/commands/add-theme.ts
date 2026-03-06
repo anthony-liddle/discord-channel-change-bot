@@ -41,7 +41,7 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
   await interaction.showModal(modal);
 
   // Wait for modal to be submitted
-  const filter = (interaction: ModalSubmitInteraction) => interaction.customId === `createThemeModal-${interaction.user.id}`;
+  const filter = (modalInteraction: ModalSubmitInteraction) => modalInteraction.customId === `createThemeModal-${interaction.user.id}`;
 
   interaction.awaitModalSubmit({filter, time: 30_000})
     .then(async (modalInteraction) => {
