@@ -4,7 +4,7 @@ import { getConfig, loadConfig } from './config';
 import { loadState } from './state';
 import { scheduleCronJob, stopScheduledTask } from './scheduler';
 import { rotateTheme, validatePermissions, getThemeName } from './rotation';
-import { getCommandHandler } from './commands';
+import { getCommandHandler, resolveCommandKey } from './commands';
 import { loadThemes } from './themes';
 
 const token = process.env.DISCORD_TOKEN;
@@ -56,7 +56,8 @@ client.once('ready', async () => {
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  const handler = getCommandHandler(interaction.commandName);
+  const key = resolveCommandKey(interaction);
+  const handler = getCommandHandler(key);
   if (!handler) return;
 
   await handler(interaction, { client, config: getConfig() });
