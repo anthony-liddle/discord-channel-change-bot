@@ -6,13 +6,14 @@ The bot automatically renames a designated channel on a weekly schedule, rotatin
 
 All commands are slash commands under `/theme-bot`. Type `/theme-bot` in any channel to see them.
 
-| Command                     | Who can use it |
-| --------------------------- | -------------- |
-| `/theme-bot themes`         | Everyone       |
-| `/theme-bot add-theme`      | Admins only    |
-| `/theme-bot rotate-now`     | Admins only    |
-| `/theme-bot reload-config`  | Admins only    |
-| `/theme-bot config channel` | Admins only    |
+| Command                      | Who can use it |
+| ---------------------------- | -------------- |
+| `/theme-bot themes`          | Everyone       |
+| `/theme-bot add-theme`       | Admins only    |
+| `/theme-bot rotate-now`      | Admins only    |
+| `/theme-bot reload-config`   | Admins only    |
+| `/theme-bot config channel`  | Admins only    |
+| `/theme-bot config schedule` | Admins only    |
 
 ---
 
@@ -41,7 +42,7 @@ Immediately rotates to the next theme without waiting for the scheduled time. Us
 
 ### `/theme-bot reload-config`
 
-Reloads the bot's configuration without needing a restart. Use this if the bot owner has made changes to the schedule or timezone settings and you need them to take effect right away.
+Reloads the bot's configuration without needing a restart. Use this if the bot owner has made changes to the timezone settings and you need them to take effect right away.
 
 ---
 
@@ -49,13 +50,24 @@ Reloads the bot's configuration without needing a restart. Use this if the bot o
 
 Opens a channel picker so you can choose which channel the bot renames each rotation. The current channel is pre-selected. Pick a new one and confirm — the change takes effect immediately for the next rotation.
 
-> **Note:** You must have Administrator permission to use this command.
+---
+
+### `/theme-bot config schedule`
+
+Opens a two-step picker to set when the weekly rotation runs:
+
+1. **Pick a day** — choose the day of the week (e.g. Saturday)
+2. **Pick a time** — choose the hour (e.g. 9:00 AM)
+
+The current schedule is pre-selected so you can see what's configured. The change takes effect immediately — the next rotation will run at the new day and time.
+
+> **Note:** All schedule times use the timezone configured by the bot owner (shown alongside the current schedule). To change the timezone, contact the bot owner.
 
 ---
 
 ## Things to know
 
-- **Rotation happens automatically** on the configured schedule (typically Monday mornings). You don't need to do anything for the weekly rotation to run.
+- **Rotation happens automatically** on the configured schedule. You don't need to do anything for the weekly rotation to run.
 - **Theme order is fixed** — themes rotate in the order they were added. Use `/theme-bot themes` to see what's coming up.
 - **The bot needs the right permissions** — if it ever stops renaming the channel, check that it still has `Manage Channels` and `Send Messages` permissions in that channel.
 - **Discord rate limits channel renames** to 2 per 10 minutes. The weekly schedule respects this, but avoid using `/theme-bot rotate-now` in quick succession.

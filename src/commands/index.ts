@@ -8,6 +8,7 @@ import { rotateNow } from './rotate-now';
 import { reloadConfigCmd } from './reload-config';
 import { addThemeCmd } from './add-theme';
 import { configChannel } from './config/channel';
+import { configSchedule } from './config/schedule';
 
 export function requireAdmin(
   interaction: ChatInputCommandInteraction,
@@ -42,6 +43,7 @@ const commands: Record<string, CommandHandler> = {
   'theme-bot:reload-config': reloadConfigCmd,
   'theme-bot:add-theme': addThemeCmd,
   'theme-bot:config:channel': configChannel,
+  'theme-bot:config:schedule': configSchedule,
 };
 
 export function getCommandHandler(key: string): CommandHandler | undefined {

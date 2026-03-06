@@ -51,6 +51,13 @@ const commands = [
             .setDescription(
               'Set the channel to rename each rotation (Admin only)',
             ),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName('schedule')
+            .setDescription(
+              'Set the day and time for weekly rotations (Admin only)',
+            ),
         ),
     ),
 ].map((command) => command.toJSON());
