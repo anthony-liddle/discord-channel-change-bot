@@ -61,8 +61,8 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
   }
 
   const themeName = selectInteraction.values[0];
-  const theme = themes.find((t) => getThemeName(t) === themeName)!;
-  const currentMessage = getThemeMessage(theme) ?? '';
+  const theme = themes.find((t) => getThemeName(t) === themeName);
+  const currentMessage = theme ? (getThemeMessage(theme) ?? '') : '';
 
   const modal = new ModalBuilder()
     .setCustomId(`editThemeModal-${interaction.user.id}`)
@@ -97,15 +97,22 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
   const filter = (i: ModalSubmitInteraction) =>
     i.customId === `editThemeModal-${interaction.user.id}`;
 
-  let modalInteraction: ModalSubmitInteraction | undefined;
+  let modalInteraction: ModalSubmitInteraction;
   try {
     modalInteraction = await interaction.awaitModalSubmit({
       filter,
       time: 5 * 60 * 1000,
     });
-    const newName = modalInteraction.fields.getTextInputValue('themeName');
-    const newMessage =
-      modalInteraction.fields.getTextInputValue('channelMessage');
+  } catch {
+    await interaction.followUp({ content: 'Timed out.', ephemeral: true });
+    return;
+  }
+
+  const newName = modalInteraction.fields.getTextInputValue('themeName');
+  const newMessage =
+    modalInteraction.fields.getTextInputValue('channelMessage');
+
+  try {
     await updateTheme(themeName, newName, newMessage);
     await modalInteraction.reply({
       content: `Theme updated! **${themeName}** is now **${newName}**.`,
@@ -113,11 +120,9 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
     });
   } catch (err) {
     console.error(err);
-    if (modalInteraction) {
-      await modalInteraction.reply({
-        content: 'Failed to update theme. Check the bot logs for details.',
-        ephemeral: true,
-      });
-    }
+    await modalInteraction.reply({
+      content: 'Failed to update theme. Check the bot logs for details.',
+      ephemeral: true,
+    });
   }
 };
