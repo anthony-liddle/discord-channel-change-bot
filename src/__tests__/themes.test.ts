@@ -25,8 +25,8 @@ function setupThemes(themes = baseThemes) {
   vi.mocked(fsp.rename).mockResolvedValue(undefined);
 }
 
-beforeEach(() => {
-  reloadThemes(); // clear cache
+beforeEach(async () => {
+  await reloadThemes();
   setupThemes();
 });
 

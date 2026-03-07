@@ -45,11 +45,13 @@ export async function reloadThemes(): Promise<ThemeEntry[]> {
   return await loadThemes();
 }
 
+function themeMatchesName(t: ThemeEntry, name: string): boolean {
+  return (typeof t === 'string' ? t : t.name) === name;
+}
+
 export async function deleteTheme(name: string): Promise<void> {
   const themes = await getThemes();
-  const index = themes.findIndex(
-    (t) => (typeof t === 'string' ? t : t.name) === name,
-  );
+  const index = themes.findIndex((t) => themeMatchesName(t, name));
   if (index === -1) throw new Error(`Theme "${name}" not found`);
 
   const updated = [...themes.slice(0, index), ...themes.slice(index + 1)];
@@ -66,9 +68,7 @@ export async function updateTheme(
   newMessage: string,
 ): Promise<void> {
   const themes = await getThemes();
-  const index = themes.findIndex(
-    (t) => (typeof t === 'string' ? t : t.name) === name,
-  );
+  const index = themes.findIndex((t) => themeMatchesName(t, name));
   if (index === -1) throw new Error(`Theme "${name}" not found`);
 
   const updated = themes.map((t, i) =>
