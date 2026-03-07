@@ -9,6 +9,8 @@ import { reloadConfigCmd } from './reload-config';
 import { addThemeCmd } from './add-theme';
 import { configChannel } from './config/channel';
 import { configSchedule } from './config/schedule';
+import { deleteThemeCmd } from './delete-theme';
+import { editThemeCmd } from './edit-theme';
 
 export function requireAdmin(
   interaction: ChatInputCommandInteraction,
@@ -44,6 +46,8 @@ const commands: Record<string, CommandHandler> = {
   'theme-bot:add-theme': addThemeCmd,
   'theme-bot:config:channel': configChannel,
   'theme-bot:config:schedule': configSchedule,
+  'theme-bot:delete-theme': deleteThemeCmd,
+  'theme-bot:edit-theme': editThemeCmd,
 };
 
 export function getCommandHandler(key: string): CommandHandler | undefined {
