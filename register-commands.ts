@@ -41,6 +41,12 @@ const commands = [
           'Add a theme using "Channel Name", and "Theme Message"',
         ),
     )
+    .addSubcommand((sub) =>
+      sub.setName('delete-theme').setDescription('Delete a theme (Admin only)'),
+    )
+    .addSubcommand((sub) =>
+      sub.setName('edit-theme').setDescription('Edit a theme (Admin only)'),
+    )
     .addSubcommandGroup((group) =>
       group
         .setName('config')
