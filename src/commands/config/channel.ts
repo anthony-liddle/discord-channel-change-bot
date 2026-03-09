@@ -6,6 +6,7 @@ import {
   ChannelSelectMenuBuilder,
   ChannelType,
   ComponentType,
+  MessageFlags,
 } from 'discord.js';
 
 export const configChannel: CommandHandler = async (interaction, context) => {
@@ -26,7 +27,7 @@ export const configChannel: CommandHandler = async (interaction, context) => {
   const response = await interaction.reply({
     content: `**Configure Rotation Channel**\nCurrently tracking: <#${currentChannelId}>\nSelect a new channel below:`,
     components: [row],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
     fetchReply: true,
   });
 

@@ -6,6 +6,7 @@ import { rotateTheme } from '../../rotation';
 import {
   ActionRowBuilder,
   ComponentType,
+  MessageFlags,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
 } from 'discord.js';
@@ -90,7 +91,7 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
     components: [
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(dayMenu),
     ],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
     fetchReply: true,
   });
 
@@ -150,8 +151,13 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
     const newCron = `0 ${selectedHour} * * ${selectedDay}`;
 
     await saveConfig({ ...config, schedule: newCron });
-    scheduleCronJob(newCron, timezone, () => {
-      rotateTheme(context.client, getConfig());
+    scheduleCronJob(newCron, timezone, async () => {
+      const result = await rotateTheme(context.client, getConfig());
+      if (!result.success) {
+        console.error(
+          `Scheduled rotation failed: ${result.error ?? 'unknown error'}`,
+        );
+      }
     });
 
     await hourInteraction.update({

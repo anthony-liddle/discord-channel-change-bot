@@ -1,6 +1,7 @@
 import type { CommandHandler } from '../types';
 import {
   LabelBuilder,
+  MessageFlags,
   ModalBuilder,
   ModalSubmitInteraction,
   TextInputBuilder,
@@ -64,7 +65,7 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
     if (modalInteraction) {
       await modalInteraction.reply({
         content: 'Failed to save theme. Check the bot logs for details.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   }

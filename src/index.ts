@@ -17,7 +17,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   loadConfig();
   const themes = await loadThemes();
   console.log(`Logged in as ${client.user!.tag}`);
@@ -36,8 +36,13 @@ client.once('ready', async () => {
   const timezone = config.timezone ?? 'America/New_York';
 
   try {
-    scheduleCronJob(schedule, timezone, () => {
-      rotateTheme(client, getConfig());
+    scheduleCronJob(schedule, timezone, async () => {
+      const result = await rotateTheme(client, getConfig());
+      if (!result.success) {
+        console.error(
+          `Scheduled rotation failed: ${result.error ?? 'unknown error'}`,
+        );
+      }
     });
   } catch {
     console.error(`ERROR: Invalid cron schedule: ${schedule}`);

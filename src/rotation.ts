@@ -114,13 +114,33 @@ export async function validatePermissions(
   }
 }
 
+export interface RotationResult {
+  success: boolean;
+  error?: string;
+}
+
+function describeDiscordError(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const e = err as Record<string, unknown>;
+    const parts: string[] = [];
+    if (typeof e.message === 'string') parts.push(e.message);
+    if (typeof e.code === 'number' || typeof e.code === 'string')
+      parts.push(`code=${e.code}`);
+    if (typeof e.status === 'number') parts.push(`status=${e.status}`);
+    if (typeof e.method === 'string' && typeof e.url === 'string')
+      parts.push(`${e.method} ${e.url}`);
+    return parts.join(' ') || String(err);
+  }
+  return String(err);
+}
+
 export async function rotateTheme(
   client: Client,
   config: Config,
-): Promise<boolean> {
+): Promise<RotationResult> {
   if (isRotating) {
     console.log('Rotation already in progress, skipping');
-    return false;
+    return { success: false, error: 'Rotation already in progress' };
   }
 
   isRotating = true;
@@ -132,15 +152,16 @@ export async function rotateTheme(
 
     if (!themes || themes.length === 0) {
       console.error('ERROR: No themes configured');
-      return false;
+      return { success: false, error: 'No themes configured' };
     }
 
     const channel = (await client.channels.fetch(
       channelId,
     )) as TextChannel | null;
     if (!channel) {
-      console.error(`ERROR: Channel ${channelId} not found`);
-      return false;
+      const msg = `Channel ${channelId} not found`;
+      console.error(`ERROR: ${msg}`);
+      return { success: false, error: msg };
     }
 
     const state = getState();
@@ -152,14 +173,15 @@ export async function rotateTheme(
     try {
       newName = normalizeChannelName(getThemeName(theme));
     } catch (validationErr) {
-      console.error(`ERROR: ${(validationErr as Error).message}`);
-      return false;
+      const msg = (validationErr as Error).message;
+      console.error(`ERROR: ${msg}`);
+      return { success: false, error: msg };
     }
 
     if (channel.name === newName) {
       console.log(`Channel already named "${newName}", skipping rename`);
       await advanceState(themes.length);
-      return true;
+      return { success: true };
     }
 
     await channel.setName(newName, 'Weekly theme rotation');
@@ -171,7 +193,7 @@ export async function rotateTheme(
         console.log('Theme announcement message sent');
       } catch (msgErr) {
         console.error(
-          `ERROR sending announcement: ${(msgErr as Error).message}`,
+          `ERROR sending announcement: ${describeDiscordError(msgErr)}`,
         );
       }
     }
@@ -179,10 +201,11 @@ export async function rotateTheme(
     await advanceState(themes.length);
     console.log(`State saved. Next theme index: ${getState().currentIndex}`);
 
-    return true;
+    return { success: true };
   } catch (err) {
-    console.error(`ERROR renaming channel: ${(err as Error).message}`);
-    return false;
+    const msg = describeDiscordError(err);
+    console.error(`ERROR renaming channel #${config.channelId}: ${msg}`);
+    return { success: false, error: msg };
   } finally {
     isRotating = false;
     console.log(`[${new Date().toISOString()}] Rotation complete`);

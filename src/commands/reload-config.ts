@@ -1,4 +1,5 @@
 import type { CommandHandler } from '../types';
+import { MessageFlags } from 'discord.js';
 import { reloadConfig } from '../config';
 import { scheduleCronJob } from '../scheduler';
 import { requireAdmin } from './index';
@@ -16,7 +17,7 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
       await interaction.reply({
         content:
           'Warning: Config reloaded but no themes are configured. Rotations will fail.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -29,24 +30,29 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
 
     try {
       const { getConfig } = await import('../config');
-      scheduleCronJob(schedule, timezone, () => {
-        rotateTheme(interaction.client, getConfig());
+      scheduleCronJob(schedule, timezone, async () => {
+        const result = await rotateTheme(interaction.client, getConfig());
+        if (!result.success) {
+          console.error(
+            `Scheduled rotation failed: ${result.error ?? 'unknown error'}`,
+          );
+        }
       });
 
       await interaction.reply({
         content: `Config reloaded! ${themes.length} themes loaded. Cron rescheduled: ${schedule} (${timezone})`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     } catch {
       await interaction.reply({
         content: `Config reloaded with ${themes.length} themes, but cron schedule is invalid: ${schedule}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   } catch (err) {
     await interaction.reply({
       content: `Failed to reload config: ${(err as Error).message}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 };
