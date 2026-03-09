@@ -10,6 +10,8 @@ All commands are slash commands under `/theme-bot`. Type `/theme-bot` in any cha
 | ---------------------------- | -------------- |
 | `/theme-bot themes`          | Everyone       |
 | `/theme-bot add-theme`       | Admins only    |
+| `/theme-bot edit-theme`      | Admins only    |
+| `/theme-bot delete-theme`    | Admins only    |
 | `/theme-bot rotate-now`      | Admins only    |
 | `/theme-bot reload-config`   | Admins only    |
 | `/theme-bot config channel`  | Admins only    |
@@ -31,6 +33,23 @@ Opens a form where you can add a new theme to the rotation. You'll be asked for:
 - **Channel Message** — The message the bot posts in the channel when this theme becomes active. Supports Discord markdown (bold, italics, etc.).
 
 The new theme is added to the end of the rotation queue.
+
+---
+
+### `/theme-bot edit-theme`
+
+Opens a dropdown to select an existing theme, then shows a form pre-filled with its current values. You can update:
+
+- **Theme Name** — Changing this renames the theme in the rotation. The same formatting rules apply (lowercased, spaces → hyphens).
+- **Channel Message** — The message posted when this theme becomes active.
+
+Changes take effect in the next rotation that uses this theme.
+
+---
+
+### `/theme-bot delete-theme`
+
+Opens a dropdown to select a theme to delete. You'll then be asked to confirm before anything is removed — this cannot be undone. The remaining themes stay in their current order.
 
 ---
 
