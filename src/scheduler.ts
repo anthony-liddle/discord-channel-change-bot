@@ -5,7 +5,7 @@ let scheduledTask: ScheduledTask | null = null;
 export function scheduleCronJob(
   schedule: string,
   timezone: string,
-  callback: () => void,
+  callback: () => Promise<void>,
 ): ScheduledTask {
   if (scheduledTask) {
     scheduledTask.stop();
@@ -18,11 +18,17 @@ export function scheduleCronJob(
 
   scheduledTask = cron.schedule(
     schedule,
-    () => {
+    async () => {
       console.log(
         `[${new Date().toISOString()}] Running scheduled theme rotation`,
       );
-      callback();
+      try {
+        await callback();
+      } catch (err) {
+        console.error(
+          `ERROR in scheduled rotation callback: ${(err as Error).message}`,
+        );
+      }
     },
     { timezone },
   );

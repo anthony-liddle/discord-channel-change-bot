@@ -1,5 +1,6 @@
 import {
   type ChatInputCommandInteraction,
+  MessageFlags,
   PermissionFlagsBits,
 } from 'discord.js';
 import type { CommandHandler } from '../types';
@@ -21,7 +22,7 @@ export function requireAdmin(
   ) {
     interaction.reply({
       content: 'You need Administrator permission to use this command.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return false;
   }

@@ -1,4 +1,5 @@
 import type { CommandHandler } from '../types';
+import { MessageFlags } from 'discord.js';
 import { getUpcomingThemes } from '../rotation';
 import { getThemes } from '../themes';
 
@@ -13,5 +14,5 @@ export const themes: CommandHandler = async (interaction) => {
   }
   response += `\n*Total themes in rotation: ${themes.length}*`;
 
-  await interaction.reply({ content: response, ephemeral: true });
+  await interaction.reply({ content: response, flags: MessageFlags.Ephemeral });
 };

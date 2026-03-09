@@ -4,6 +4,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
+  MessageFlags,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
 } from 'discord.js';
@@ -18,7 +19,7 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
   if (themes.length === 0) {
     await interaction.reply({
       content: 'No themes to delete.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -40,7 +41,7 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
   const response = await interaction.reply({
     content: 'Which theme would you like to delete?',
     components: [selectRow],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 
   let selectInteraction;

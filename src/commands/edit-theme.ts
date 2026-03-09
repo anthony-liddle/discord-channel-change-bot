@@ -3,6 +3,7 @@ import {
   ActionRowBuilder,
   ComponentType,
   LabelBuilder,
+  MessageFlags,
   ModalBuilder,
   ModalSubmitInteraction,
   StringSelectMenuBuilder,
@@ -21,7 +22,7 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
   if (themes.length === 0) {
     await interaction.reply({
       content: 'No themes to edit.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -43,7 +44,7 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
   const response = await interaction.reply({
     content: 'Which theme would you like to edit?',
     components: [selectRow],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 
   let selectInteraction;
@@ -104,7 +105,10 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
       time: 5 * 60 * 1000,
     });
   } catch {
-    await interaction.followUp({ content: 'Timed out.', ephemeral: true });
+    await interaction.followUp({
+      content: 'Timed out.',
+      flags: MessageFlags.Ephemeral,
+    });
     return;
   }
 
@@ -116,13 +120,13 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
     await updateTheme(themeName, newName, newMessage);
     await modalInteraction.reply({
       content: `Theme updated! **${themeName}** is now **${newName}**.`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } catch (err) {
     console.error(err);
     await modalInteraction.reply({
       content: 'Failed to update theme. Check the bot logs for details.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 };
