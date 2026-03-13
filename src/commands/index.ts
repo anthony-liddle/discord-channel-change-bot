@@ -12,6 +12,7 @@ import { configChannel } from './config/channel';
 import { configSchedule } from './config/schedule';
 import { deleteThemeCmd } from './delete-theme';
 import { editThemeCmd } from './edit-theme';
+import { reorderThemesCmd } from './reorder-themes';
 
 export function requireAdmin(
   interaction: ChatInputCommandInteraction,
@@ -49,6 +50,7 @@ const commands: Record<string, CommandHandler> = {
   'theme-bot:config:schedule': configSchedule,
   'theme-bot:delete-theme': deleteThemeCmd,
   'theme-bot:edit-theme': editThemeCmd,
+  'theme-bot:reorder-themes': reorderThemesCmd,
 };
 
 export function getCommandHandler(key: string): CommandHandler | undefined {

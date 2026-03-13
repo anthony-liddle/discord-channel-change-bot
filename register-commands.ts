@@ -47,6 +47,11 @@ const commands = [
     .addSubcommand((sub) =>
       sub.setName('edit-theme').setDescription('Edit a theme (Admin only)'),
     )
+    .addSubcommand((sub) =>
+      sub
+        .setName('reorder-themes')
+        .setDescription('Reorder the theme rotation list (Admin only)'),
+    )
     .addSubcommandGroup((group) =>
       group
         .setName('config')
