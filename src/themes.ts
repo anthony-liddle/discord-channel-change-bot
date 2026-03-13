@@ -45,6 +45,13 @@ export async function reloadThemes(): Promise<ThemeEntry[]> {
   return await loadThemes();
 }
 
+export async function saveThemes(themes: ThemeEntry[]): Promise<void> {
+  cachedThemes = themes;
+  const tempPath = `${THEMES_PATH}.tmp`;
+  await fs.writeFile(tempPath, JSON.stringify({ themes }));
+  await fs.rename(tempPath, THEMES_PATH);
+}
+
 function themeMatchesName(t: ThemeEntry, name: string): boolean {
   return (typeof t === 'string' ? t : t.name) === name;
 }

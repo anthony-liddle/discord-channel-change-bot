@@ -10,23 +10,23 @@ import {
   StringSelectMenuOptionBuilder,
 } from 'discord.js';
 import { requireAdmin } from './index';
-import { getThemes, reorderTheme } from '../themes';
+import { getThemes, saveThemes } from '../themes';
 import { getThemeName } from '../rotation';
 import { getState, saveState } from '../state';
 
-interface IndexedTheme {
+export interface IndexedTheme {
   theme: ThemeEntry;
   absoluteIndex: number;
 }
 
-function buildRotatedView(
+export function buildRotatedView(
   themes: ThemeEntry[],
   currentIndex: number,
 ): IndexedTheme[] {
-  return themes.map((theme, i) => ({
-    theme,
-    absoluteIndex: (currentIndex + i) % themes.length,
-  }));
+  return Array.from({ length: themes.length }, (_, i) => {
+    const absoluteIndex = (currentIndex + i) % themes.length;
+    return { theme: themes[absoluteIndex], absoluteIndex };
+  });
 }
 
 function buildListText(
@@ -231,9 +231,12 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
           try {
             const state = getState();
             const trackedName = getThemeName(themes[state.currentIndex]);
-            const newAbsoluteIndex =
-              workingView[selectedDisplayIndex].absoluteIndex;
-            await reorderTheme(originalAbsoluteIndex, newAbsoluteIndex);
+            const desired = new Array<ThemeEntry>(workingView.length);
+            for (let i = 0; i < workingView.length; i++) {
+              desired[(state.currentIndex + i) % workingView.length] =
+                workingView[i].theme;
+            }
+            await saveThemes(desired);
             themes = await getThemes();
             const newCurrentIndex = themes.findIndex(
               (t) => getThemeName(t) === trackedName,
