@@ -10,31 +10,50 @@ import {
   StringSelectMenuOptionBuilder,
 } from 'discord.js';
 import { requireAdmin } from './index';
-import { getThemes, reorderTheme } from '../themes';
+import { getThemes, saveThemes } from '../themes';
 import { getThemeName } from '../rotation';
 import { getState, saveState } from '../state';
 
-function buildListText(themes: ThemeEntry[], highlightIndex?: number): string {
+export interface IndexedTheme {
+  theme: ThemeEntry;
+  absoluteIndex: number;
+}
+
+export function buildRotatedView(
+  themes: ThemeEntry[],
+  currentIndex: number,
+): IndexedTheme[] {
+  return Array.from({ length: themes.length }, (_, i) => {
+    const absoluteIndex = (currentIndex + i) % themes.length;
+    return { theme: themes[absoluteIndex], absoluteIndex };
+  });
+}
+
+function buildListText(
+  items: IndexedTheme[],
+  highlightDisplayIndex?: number,
+): string {
   return (
     '**Current theme order:**\n' +
-    themes
-      .map((t, i) => {
-        const marker = i === highlightIndex ? ' →' : '';
-        return `${i + 1}. \`${getThemeName(t)}\`${marker}`;
+    items
+      .map((item, i) => {
+        const marker = i === highlightDisplayIndex ? ' →' : '';
+        const currentMarker = i === 0 ? ' (current)' : '';
+        return `${i + 1}. \`${getThemeName(item.theme)}\`${currentMarker}${marker}`;
       })
       .join('\n')
   );
 }
 
-function buildStep1Components(themes: ThemeEntry[], userId: string) {
+function buildStep1Components(items: IndexedTheme[], userId: string) {
   const select = new StringSelectMenuBuilder()
     .setCustomId(`reorderThemeSelect-${userId}`)
     .setPlaceholder('Select a theme to move')
     .addOptions(
-      themes.map((t, i) =>
+      items.map((item, i) =>
         new StringSelectMenuOptionBuilder()
-          .setLabel(`${i + 1}. ${getThemeName(t)}`)
-          .setValue(String(i)),
+          .setLabel(`${i + 1}. ${getThemeName(item.theme)}`)
+          .setValue(String(item.absoluteIndex)),
       ),
     );
 
@@ -47,6 +66,11 @@ function buildStep1Components(themes: ThemeEntry[], userId: string) {
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
     new ActionRowBuilder<ButtonBuilder>().addComponents(doneButton),
   ];
+}
+
+function buildRotatedViewFromThemes(themes: ThemeEntry[]): IndexedTheme[] {
+  const { currentIndex } = getState();
+  return buildRotatedView(themes, currentIndex);
 }
 
 function buildStep2Components(
@@ -117,9 +141,11 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
     return;
   }
 
+  let view = buildRotatedViewFromThemes(themes);
+
   const response = await interaction.reply({
-    content: buildListText(themes),
-    components: buildStep1Components(themes, userId),
+    content: buildListText(view),
+    components: buildStep1Components(view, userId),
     flags: MessageFlags.Ephemeral,
   });
 
@@ -143,17 +169,20 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
       return;
     }
 
-    const originalIndex = parseInt(
+    // Value is the absolute file index of the selected theme
+    const originalAbsoluteIndex = parseInt(
       (step1Interaction as StringSelectMenuInteraction).values[0],
     );
-    let selectedIndex = originalIndex;
-    let workingThemes = [...themes];
+    let workingView = [...view];
+    let selectedDisplayIndex = workingView.findIndex(
+      (item) => item.absoluteIndex === originalAbsoluteIndex,
+    );
 
     await step1Interaction.update({
-      content: buildListText(workingThemes, selectedIndex),
+      content: buildListText(workingView, selectedDisplayIndex),
       components: buildStep2Components(
-        selectedIndex,
-        workingThemes.length,
+        selectedDisplayIndex,
+        workingView.length,
         userId,
       ),
     });
@@ -179,21 +208,21 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
           btn.customId === `reorderThemeUp-${userId}` ||
           btn.customId === `reorderThemeDown-${userId}`
         ) {
-          const newIndex =
+          const newDisplayIndex =
             btn.customId === `reorderThemeUp-${userId}`
-              ? selectedIndex - 1
-              : selectedIndex + 1;
-          const updated = [...workingThemes];
-          const [moved] = updated.splice(selectedIndex, 1);
-          updated.splice(newIndex, 0, moved);
-          workingThemes = updated;
-          selectedIndex = newIndex;
+              ? selectedDisplayIndex - 1
+              : selectedDisplayIndex + 1;
+          const updated = [...workingView];
+          const [moved] = updated.splice(selectedDisplayIndex, 1);
+          updated.splice(newDisplayIndex, 0, moved);
+          workingView = updated;
+          selectedDisplayIndex = newDisplayIndex;
 
           await btn.update({
-            content: buildListText(workingThemes, selectedIndex),
+            content: buildListText(workingView, selectedDisplayIndex),
             components: buildStep2Components(
-              selectedIndex,
-              workingThemes.length,
+              selectedDisplayIndex,
+              workingView.length,
               userId,
             ),
           });
@@ -202,7 +231,12 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
           try {
             const state = getState();
             const trackedName = getThemeName(themes[state.currentIndex]);
-            await reorderTheme(originalIndex, selectedIndex);
+            const desired = new Array<ThemeEntry>(workingView.length);
+            for (let i = 0; i < workingView.length; i++) {
+              desired[(state.currentIndex + i) % workingView.length] =
+                workingView[i].theme;
+            }
+            await saveThemes(desired);
             themes = await getThemes();
             const newCurrentIndex = themes.findIndex(
               (t) => getThemeName(t) === trackedName,
@@ -211,9 +245,10 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
               currentIndex:
                 newCurrentIndex >= 0 ? newCurrentIndex : state.currentIndex,
             });
+            view = buildRotatedViewFromThemes(themes);
             await btn.update({
-              content: buildListText(themes),
-              components: buildStep1Components(themes, userId),
+              content: buildListText(view),
+              components: buildStep1Components(view, userId),
             });
           } catch (err) {
             await btn.update({
@@ -226,8 +261,8 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
         } else if (btn.customId === `reorderThemeCancel-${userId}`) {
           collector.stop('cancel');
           await btn.update({
-            content: buildListText(themes),
-            components: buildStep1Components(themes, userId),
+            content: buildListText(view),
+            components: buildStep1Components(view, userId),
           });
           resolve();
         }
