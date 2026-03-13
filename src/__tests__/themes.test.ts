@@ -9,7 +9,12 @@ vi.mock('fs/promises', () => ({
 }));
 
 import fsp from 'fs/promises';
-import { deleteTheme, updateTheme, reloadThemes } from '../themes';
+import {
+  deleteTheme,
+  updateTheme,
+  reorderTheme,
+  reloadThemes,
+} from '../themes';
 
 const baseThemes = [
   { name: 'Monochrome', message: 'Black and white only!' },
@@ -103,5 +108,49 @@ describe('updateTheme', () => {
     await expect(
       updateTheme('NonExistent', 'New Name', 'New message'),
     ).rejects.toThrow('Theme "NonExistent" not found');
+  });
+});
+
+// ─── reorderTheme ─────────────────────────────────────────────────────────────
+
+describe('reorderTheme', () => {
+  it('moves a theme from one position to another', async () => {
+    await reorderTheme(0, 2);
+
+    const written = JSON.parse(
+      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
+    );
+    expect(written.themes.map((t: { name: string }) => t.name)).toEqual([
+      'Macro',
+      'Street',
+      'Monochrome',
+    ]);
+  });
+
+  it('does not change the number of themes', async () => {
+    await reorderTheme(1, 0);
+
+    const written = JSON.parse(
+      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
+    );
+    expect(written.themes).toHaveLength(3);
+  });
+
+  it('writes to a .tmp path then renames', async () => {
+    await reorderTheme(0, 1);
+
+    const tmpPath = vi.mocked(fsp.writeFile).mock.calls[0][0] as string;
+    const [from, to] = vi.mocked(fsp.rename).mock.calls[0] as [string, string];
+    expect(tmpPath).toContain('.tmp');
+    expect(from).toBe(tmpPath);
+    expect(to).not.toContain('.tmp');
+  });
+
+  it('throws when fromIndex is out of bounds', async () => {
+    await expect(reorderTheme(5, 0)).rejects.toThrow('Index out of bounds');
+  });
+
+  it('throws when toIndex is out of bounds', async () => {
+    await expect(reorderTheme(0, 5)).rejects.toThrow('Index out of bounds');
   });
 });
