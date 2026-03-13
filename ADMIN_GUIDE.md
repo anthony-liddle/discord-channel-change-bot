@@ -12,6 +12,7 @@ All commands are slash commands under `/theme-bot`. Type `/theme-bot` in any cha
 | `/theme-bot add-theme`       | Admins only    |
 | `/theme-bot edit-theme`      | Admins only    |
 | `/theme-bot delete-theme`    | Admins only    |
+| `/theme-bot reorder-themes`  | Admins only    |
 | `/theme-bot rotate-now`      | Admins only    |
 | `/theme-bot reload-config`   | Admins only    |
 | `/theme-bot config channel`  | Admins only    |
@@ -53,6 +54,23 @@ Opens a dropdown to select a theme to delete. You'll then be asked to confirm be
 
 ---
 
+### `/theme-bot reorder-themes`
+
+Opens the current theme list and lets you drag themes up and down to reorder the rotation. Use this if a theme ended up in the wrong position without having to delete and re-add anything.
+
+**How it works:**
+
+1. A numbered list of all themes is shown with a dropdown — select the theme you want to move.
+2. The list re-renders with your selected theme highlighted and four buttons: **↑ Move Up**, **↓ Move Down**, **✓ Save**, **✕ Cancel**.
+3. Click ↑ or ↓ as many times as needed — the list updates live so you can see exactly where the theme lands.
+4. Click **✓ Save** to write the new order. The list reappears so you can immediately reposition another theme if needed.
+5. Click **✕ Cancel** to discard moves for the current selection and return to the dropdown.
+6. When you're done moving things around, click **✓ Done** to close.
+
+> **Note:** The bot keeps track of which theme is currently "up next" — reordering won't accidentally skip or repeat a theme mid-rotation.
+
+---
+
 ### `/theme-bot rotate-now`
 
 Immediately rotates to the next theme without waiting for the scheduled time. Use this if you want to kick off a new theme early or test that things are working. The bot will confirm which theme was applied.
@@ -87,6 +105,6 @@ The current schedule is pre-selected so you can see what's configured. The chang
 ## Things to know
 
 - **Rotation happens automatically** on the configured schedule. You don't need to do anything for the weekly rotation to run.
-- **Theme order is fixed** — themes rotate in the order they were added. Use `/theme-bot themes` to see what's coming up.
+- **Theme order** — themes rotate in the order they appear in the list. Use `/theme-bot themes` to see what's coming up, and `/theme-bot reorder-themes` to change the order.
 - **The bot needs the right permissions** — if it ever stops renaming the channel, check that it still has `Manage Channels` and `Send Messages` permissions in that channel.
 - **Discord rate limits channel renames** to 2 per 10 minutes. The weekly schedule respects this, but avoid using `/theme-bot rotate-now` in quick succession.
