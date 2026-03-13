@@ -62,6 +62,32 @@ export async function deleteTheme(name: string): Promise<void> {
   await fs.rename(tempPath, THEMES_PATH);
 }
 
+export async function reorderTheme(
+  fromIndex: number,
+  toIndex: number,
+): Promise<void> {
+  const themes = await getThemes();
+  if (
+    fromIndex < 0 ||
+    fromIndex >= themes.length ||
+    toIndex < 0 ||
+    toIndex >= themes.length
+  ) {
+    throw new Error(
+      `Index out of bounds (fromIndex=${fromIndex}, toIndex=${toIndex}, length=${themes.length})`,
+    );
+  }
+
+  const updated = [...themes];
+  const [moved] = updated.splice(fromIndex, 1);
+  updated.splice(toIndex, 0, moved);
+  cachedThemes = updated;
+
+  const tempPath = `${THEMES_PATH}.tmp`;
+  await fs.writeFile(tempPath, JSON.stringify({ themes: updated }));
+  await fs.rename(tempPath, THEMES_PATH);
+}
+
 export async function updateTheme(
   name: string,
   newName: string,
