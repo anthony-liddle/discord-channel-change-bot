@@ -1,7 +1,7 @@
 import type { Client, TextChannel } from 'discord.js';
 import { PermissionFlagsBits } from 'discord.js';
 import type { Config, ThemeEntry, UpcomingTheme } from './types';
-import { getState, advanceState } from './state';
+import { getState, setStateIndex } from './state';
 import { getThemes } from './themes';
 
 let isRotating = false;
@@ -165,8 +165,8 @@ export async function rotateTheme(
     }
 
     const state = getState();
-    const nextIndex = state.currentIndex % themes.length;
-    const theme = themes[nextIndex];
+    const applyIndex = (state.currentIndex + 1) % themes.length;
+    const theme = themes[applyIndex];
     const message = getThemeMessage(theme);
 
     let newName: string;
@@ -180,7 +180,7 @@ export async function rotateTheme(
 
     if (channel.name === newName) {
       console.log(`Channel already named "${newName}", skipping rename`);
-      await advanceState(themes.length);
+      await setStateIndex(applyIndex);
       return { success: true };
     }
 
@@ -198,8 +198,8 @@ export async function rotateTheme(
       }
     }
 
-    await advanceState(themes.length);
-    console.log(`State saved. Next theme index: ${getState().currentIndex}`);
+    await setStateIndex(applyIndex);
+    console.log(`State saved. Current theme index: ${applyIndex}`);
 
     return { success: true };
   } catch (err) {
