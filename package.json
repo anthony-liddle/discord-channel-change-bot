@@ -37,23 +37,23 @@
     ]
   },
   "dependencies": {
-    "discord.js": "^14.26.4",
+    "discord.js": "^14.27.0",
     "dotenv": "^17.4.2",
-    "node-cron": "^4.5.0"
+    "node-cron": "^4.6.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.0.2",
-    "@commitlint/config-conventional": "^21.0.2",
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.1.0",
+    "@types/node": "^26.1.1",
     "@types/node-cron": "^3.0.11",
-    "eslint": "^10.5.0",
+    "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.8",
-    "prettier": "^3.8.4",
+    "lint-staged": "^17.1.0",
+    "prettier": "^3.9.5",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.62.0",
-    "vitest": "^4.1.9"
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.1.10"
   }
 }
