@@ -10,6 +10,7 @@ import {
 import { getThemeName } from '../rotation';
 import { requireAdmin } from './index';
 import { addTheme } from '../themes';
+import { formatHandlerError } from '../interaction-errors';
 
 export const addThemeCmd: CommandHandler = async (interaction) => {
   if (!(await requireAdmin(interaction))) return;
@@ -48,25 +49,34 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
   const filter = (modalInteraction: ModalSubmitInteraction) =>
     modalInteraction.customId === `createThemeModal-${interaction.user.id}`;
 
-  let modalInteraction: ModalSubmitInteraction | undefined;
+  let modalInteraction: ModalSubmitInteraction;
   try {
     modalInteraction = await interaction.awaitModalSubmit({
       filter,
       time: 5 * 60 * 1000,
     });
-    const name = modalInteraction.fields.getTextInputValue('themeName');
-    const message = modalInteraction.fields.getTextInputValue('channelMessage');
+  } catch {
+    await interaction.followUp({
+      content: 'Timed out.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  const name = modalInteraction.fields.getTextInputValue('themeName');
+  const message = modalInteraction.fields.getTextInputValue('channelMessage');
+
+  try {
     await addTheme(name, message);
     await modalInteraction.reply({
       content: `Theme Added! New theme: \`${getThemeName(name)}\``,
     });
   } catch (err) {
-    console.error(err);
-    if (modalInteraction) {
-      await modalInteraction.reply({
-        content: 'Failed to save theme. Check the bot logs for details.',
-        flags: MessageFlags.Ephemeral,
-      });
-    }
+    // Pointing at the logs is useless when nobody on the admin team can read
+    // them. Say what actually failed.
+    await modalInteraction.reply({
+      content: `Failed to save theme.\n> ${formatHandlerError(err)}`,
+      flags: MessageFlags.Ephemeral,
+    });
   }
 };

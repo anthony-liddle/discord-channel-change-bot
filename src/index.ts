@@ -6,6 +6,7 @@ import { scheduleCronJob, stopScheduledTask } from './scheduler';
 import { rotateTheme, validatePermissions, getThemeName } from './rotation';
 import { getCommandHandler, resolveCommandKey } from './commands';
 import { loadThemes } from './themes';
+import { formatHandlerError, reportHandlerError } from './interaction-errors';
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -65,7 +66,18 @@ client.on('interactionCreate', async (interaction) => {
   const handler = getCommandHandler(key);
   if (!handler) return;
 
-  await handler(interaction, { client, config: getConfig() });
+  try {
+    await handler(interaction, { client, config: getConfig() });
+  } catch (err) {
+    await reportHandlerError(interaction, err);
+  }
+});
+
+// The dispatch try/catch cannot see a promise nobody awaited. Without this a
+// single floating rejection takes the process down and the cron schedule with
+// it, which is a far worse outcome than a broken command.
+process.on('unhandledRejection', (reason) => {
+  console.error(`Unhandled rejection: ${formatHandlerError(reason)}`, reason);
 });
 
 async function shutdown(): Promise<void> {
