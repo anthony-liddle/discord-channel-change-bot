@@ -6,7 +6,7 @@ import { requireAdmin } from './index';
 import { reloadThemes } from '../themes';
 
 export const reloadConfigCmd: CommandHandler = async (interaction) => {
-  if (!requireAdmin(interaction)) return;
+  if (!(await requireAdmin(interaction))) return;
 
   try {
     const config = reloadConfig();

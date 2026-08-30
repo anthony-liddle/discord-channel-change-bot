@@ -19,14 +19,16 @@ import {
 } from './theme-picker';
 
 export const editThemeCmd: CommandHandler = async (interaction) => {
-  if (!requireAdmin(interaction)) return;
+  if (!(await requireAdmin(interaction))) return;
+
+  // Acknowledge before building any component. Builder validation throws
+  // synchronously, and anything thrown before the acknowledgement shows up in
+  // Discord as "The application did not respond" with no way to see why.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const themes = await getThemes();
   if (themes.length === 0) {
-    await interaction.reply({
-      content: 'No themes to edit.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.editReply({ content: 'No themes to edit.' });
     return;
   }
 
@@ -36,10 +38,9 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
     themes,
   );
 
-  const response = await interaction.reply({
+  const response = await interaction.editReply({
     content: 'Which theme would you like to edit?',
     components: [selectRow],
-    flags: MessageFlags.Ephemeral,
   });
 
   let selectInteraction;

@@ -12,7 +12,7 @@ import { requireAdmin } from './index';
 import { addTheme } from '../themes';
 
 export const addThemeCmd: CommandHandler = async (interaction) => {
-  if (!requireAdmin(interaction)) return;
+  if (!(await requireAdmin(interaction))) return;
   const modal = new ModalBuilder()
     .setCustomId(`createThemeModal-${interaction.user.id}`)
     .setTitle('New Theme');
