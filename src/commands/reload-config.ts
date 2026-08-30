@@ -44,6 +44,12 @@ async function buildRuntimeFileDump(): Promise<{
 export const reloadConfigCmd: CommandHandler = async (interaction) => {
   if (!(await requireAdmin(interaction))) return;
 
+  // Read the files before anything that can fail, and attach them to every
+  // reply path. A themes.json that will not parse is swallowed by loadThemes
+  // and routes to the "no themes configured" branch below, which is exactly the
+  // state where seeing the raw bytes matters most.
+  const dump = await buildRuntimeFileDump();
+
   try {
     const config = reloadConfig();
     const themes = await reloadThemes();
@@ -52,7 +58,9 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
       console.warn('Config reloaded with no themes configured');
       await interaction.reply({
         content:
-          'Warning: Config reloaded but no themes are configured. Rotations will fail.',
+          'Warning: Config reloaded but no themes are configured. Rotations will fail.\n' +
+          dump.summary,
+        files: dump.files,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -75,7 +83,6 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
         }
       });
 
-      const dump = await buildRuntimeFileDump();
       await interaction.reply({
         content:
           `Config reloaded! ${themes.length} themes loaded. ` +
@@ -85,13 +92,18 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
       });
     } catch {
       await interaction.reply({
-        content: `Config reloaded with ${themes.length} themes, but cron schedule is invalid: ${schedule}`,
+        content:
+          `Config reloaded with ${themes.length} themes, but cron schedule is invalid: ${schedule}\n` +
+          dump.summary,
+        files: dump.files,
         flags: MessageFlags.Ephemeral,
       });
     }
   } catch (err) {
     await interaction.reply({
-      content: `Failed to reload config: ${(err as Error).message}`,
+      content:
+        `Failed to reload config: ${(err as Error).message}\n` + dump.summary,
+      files: dump.files,
       flags: MessageFlags.Ephemeral,
     });
   }

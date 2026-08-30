@@ -241,6 +241,19 @@ describe('updateTheme duplicate guard', () => {
       updateTheme(2, 'Weekly Theme Thicc Two', 'renamed'),
     ).resolves.toBeUndefined();
   });
+
+  // Deliberate: editing one of two duplicates and keeping the shared name is
+  // rejected, because the other copy still holds it. Forcing a rename is the
+  // point, since leaving both is what broke the picker. The repair sequence
+  // says so.
+  it('rejects keeping a name that a second entry also holds', async () => {
+    setupThemes(duplicateThemes);
+    await reloadThemes();
+
+    await expect(
+      updateTheme(1, 'Weekly Theme Thicc', 'message only edit'),
+    ).rejects.toThrow(/already exists at position 3/);
+  });
 });
 
 // ─── reorderTheme ─────────────────────────────────────────────────────────────
