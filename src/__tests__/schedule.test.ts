@@ -82,4 +82,14 @@ describe('formatSchedule', () => {
     expect(result).toContain('*/15 * * * *');
     expect(result).toContain('UTC');
   });
+
+  // Asserted on the character rather than the wording so it stays a real guard
+  // if anyone rewrites the sentence around it.
+  it('uses no em dash in the unsupported format fallback', () => {
+    expect(formatSchedule('*/15 * * * *', 'UTC')).not.toContain('—');
+  });
+
+  it('uses no em dash in the parsed schedule output', () => {
+    expect(formatSchedule('0 9 * * 1', 'UTC')).not.toContain('—');
+  });
 });

@@ -53,7 +53,7 @@ export function parseCron(cron: string): { day: string; hour: string } | null {
  */
 export function formatSchedule(cron: string, timezone: string): string {
   const parsed = parseCron(cron);
-  if (!parsed) return `Custom schedule (\`${cron}\`) — ${timezone}`;
+  if (!parsed) return `Custom schedule (\`${cron}\`) in ${timezone}`;
   const day =
     DAYS.find((d) => d.value === parsed.day)?.label ?? `day ${parsed.day}`;
   const hour =

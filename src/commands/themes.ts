@@ -2,6 +2,7 @@ import type { CommandHandler } from '../types';
 import { MessageFlags } from 'discord.js';
 import { getUpcomingThemes } from '../rotation';
 import { getThemes } from '../themes';
+import { DEPLOY_MARKER } from '../version';
 
 export const themes: CommandHandler = async (interaction) => {
   const themes = await getThemes();
@@ -12,7 +13,7 @@ export const themes: CommandHandler = async (interaction) => {
     const marker = item.isCurrent ? ' (current)' : '';
     response += `Week ${item.week}: \`${item.name}\`${marker}\n`;
   }
-  response += `\n*Total themes in rotation: ${themes.length}*`;
+  response += `\n*Total themes in rotation: ${themes.length} · build ${DEPLOY_MARKER}*`;
 
   await interaction.reply({ content: response, flags: MessageFlags.Ephemeral });
 };

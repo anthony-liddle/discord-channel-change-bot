@@ -40,6 +40,17 @@ Feature suggestions are welcome! Please:
 5. **Commit your changes** with clear, descriptive messages
 6. **Push to your fork** and submit a pull request
 
+### Confirming a Deployment
+
+If you need to confirm that a change actually reached the running bot, bump
+`DEPLOY_MARKER` in `src/version.ts` in the same PR. The value is shown in the
+footer of `/theme-bot themes`, so running that command in Discord tells you
+which build is live. Format is `YYYY-MM-DD.N`.
+
+This exists because the bot runs on hosting with no log access and a deploy
+pipeline that is not in this repo. The marker is the only way to see what is
+actually running.
+
 ## Development Setup
 
 ```bash
