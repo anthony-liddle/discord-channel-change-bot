@@ -6,8 +6,40 @@ export const THEMES_PATH = dataPath('themes.json');
 
 let cachedThemes: ThemeEntry[] | null = null;
 
+/**
+ * Compared trimmed and case insensitively because normalizeChannelName
+ * lowercases and collapses whitespace, so "Thicc" and " thicc " both rename the
+ * channel to the same thing. Two themes that produce the same channel name are
+ * duplicates for every purpose the bot has.
+ */
+function comparableName(theme: ThemeEntry): string {
+  const raw = typeof theme === 'string' ? theme : theme?.name;
+  return String(raw ?? '')
+    .trim()
+    .toLowerCase();
+}
+
+function assertNameIsFree(
+  themes: ThemeEntry[],
+  name: string,
+  ignoreIndex = -1,
+): void {
+  const candidate = name.trim().toLowerCase();
+  const clash = themes.findIndex(
+    (theme, i) => i !== ignoreIndex && comparableName(theme) === candidate,
+  );
+  if (clash !== -1) {
+    throw new Error(
+      `A theme named "${name.trim()}" already exists at position ${clash + 1}. ` +
+        'Pick a different name, or edit that entry instead.',
+    );
+  }
+}
+
 export async function addTheme(name: string, message: string): Promise<void> {
   const themes = await getThemes();
+  assertNameIsFree(themes, name);
+
   const tempPath = `${THEMES_PATH}.tmp`;
 
   themes.push({ name, message });
@@ -110,6 +142,9 @@ export async function updateTheme(
 ): Promise<void> {
   const themes = await getThemes();
   assertIndexInRange(index, themes.length);
+  // The entry being edited is exempt, so keeping its own name is allowed even
+  // when a duplicate of it exists elsewhere in the list.
+  assertNameIsFree(themes, newName, index);
 
   const updated = themes.map((t, i) =>
     i === index ? { name: newName, message: newMessage } : t,

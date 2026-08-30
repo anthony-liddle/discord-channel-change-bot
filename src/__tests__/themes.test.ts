@@ -10,6 +10,7 @@ vi.mock('fs/promises', () => ({
 
 import fsp from 'fs/promises';
 import {
+  addTheme,
   deleteTheme,
   updateTheme,
   reorderTheme,
@@ -38,9 +39,12 @@ function setupThemes(themes = baseThemes) {
   vi.mocked(fsp.rename).mockResolvedValue(undefined);
 }
 
+// clearMocks resets recorded calls but keeps implementations, so the mock has
+// to be re-pointed at the base themes before the reload or the previous test's
+// theme list stays in the cache.
 beforeEach(async () => {
-  await reloadThemes();
   setupThemes();
+  await reloadThemes();
 });
 
 // ─── deleteTheme ──────────────────────────────────────────────────────────────
@@ -159,6 +163,83 @@ describe('updateTheme', () => {
     await expect(updateTheme(9, 'New Name', 'New message')).rejects.toThrow(
       'No theme at position 9',
     );
+  });
+});
+
+// ─── duplicate names ──────────────────────────────────────────────────────────
+
+// A double modal submit is the most plausible way two identical names got into
+// the live file. Names are compared trimmed and case insensitively because
+// normalizeChannelName lowercases, so "Thicc" and "thicc" become the same
+// channel name and are duplicates for every purpose that matters.
+
+describe('addTheme duplicate guard', () => {
+  it('rejects a name that already exists', async () => {
+    await expect(addTheme('Macro', 'Get close!')).rejects.toThrow(
+      /already exists/i,
+    );
+  });
+
+  it('names the position it collides with', async () => {
+    await expect(addTheme('Macro', 'Get close!')).rejects.toThrow(
+      /position 2/i,
+    );
+  });
+
+  it('rejects a name differing only by case', async () => {
+    await expect(addTheme('macro', 'Get close!')).rejects.toThrow(
+      /already exists/i,
+    );
+  });
+
+  it('rejects a name differing only by surrounding whitespace', async () => {
+    await expect(addTheme('  Macro  ', 'Get close!')).rejects.toThrow(
+      /already exists/i,
+    );
+  });
+
+  it('does not write to disk when it rejects', async () => {
+    await expect(addTheme('Macro', 'Get close!')).rejects.toThrow();
+    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+
+  it('still adds a genuinely new theme', async () => {
+    await addTheme('Golden Hour', 'Shoot at sunset.');
+
+    const written = JSON.parse(
+      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
+    );
+    expect(written.themes).toHaveLength(4);
+    expect(written.themes[3].name).toBe('Golden Hour');
+  });
+});
+
+describe('updateTheme duplicate guard', () => {
+  it('rejects renaming an entry onto another entry name', async () => {
+    await expect(updateTheme(1, 'Street', 'Urban life.')).rejects.toThrow(
+      /already exists/i,
+    );
+  });
+
+  it('allows an entry to keep its own name', async () => {
+    await expect(
+      updateTheme(1, 'Macro', 'A new message.'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('allows an entry to keep its own name in different case', async () => {
+    await expect(
+      updateTheme(1, 'MACRO', 'A new message.'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('lets one of two duplicates be renamed to something unique', async () => {
+    setupThemes(duplicateThemes);
+    await reloadThemes();
+
+    await expect(
+      updateTheme(2, 'Weekly Theme Thicc Two', 'renamed'),
+    ).resolves.toBeUndefined();
   });
 });
 
