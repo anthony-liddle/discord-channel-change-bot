@@ -105,11 +105,16 @@ export function resolveThemeIndex(value: string, themes: ThemeEntry[]): number {
   return index;
 }
 
+/**
+ * buildThemeOptions truncates past 25 because Discord will not accept more.
+ * Truncating silently would hide themes from the picker, so handlers check this
+ * first and say so. reorder-themes has done this since it was written.
+ */
 export function isOverSelectLimit(themes: ThemeEntry[]): boolean {
   return themes.length > MAX_SELECT_OPTIONS;
 }
 
 export const OVER_LIMIT_MESSAGE =
-  "You have more themes than Discord's menu can handle (max 25). " +
-  'Use /theme-bot reorder-themes to see the full list, and trim it below 26 ' +
-  'before editing or deleting.';
+  "You have more themes than Discord's menu can handle (max 25), so this " +
+  'command cannot show them all. Use /theme-bot reorder-themes to see the ' +
+  'full list, and trim it below 26 before editing or deleting.';

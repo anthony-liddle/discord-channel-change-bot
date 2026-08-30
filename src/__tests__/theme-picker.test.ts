@@ -8,6 +8,8 @@ import {
   resolveThemeIndex,
   themeNameText,
   themeMessageText,
+  isOverSelectLimit,
+  OVER_LIMIT_MESSAGE,
 } from '../commands/theme-picker';
 
 // Every name shape that survives /theme-bot reorder-themes but reaches the raw
@@ -166,6 +168,33 @@ describe('themeMessageText', () => {
   it('never exceeds the text input limit', () => {
     const huge = { name: 'a', message: 'y'.repeat(9000) };
     expect(themeMessageText(huge).length).toBeLessThanOrEqual(4000);
+  });
+});
+
+// Not the cause of the 2026-08-30 outage at 15 themes, but a real ceiling. The
+// picker truncates silently, so the handlers need to say so out loud.
+describe('isOverSelectLimit', () => {
+  const list = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ name: `Theme ${i}`, message: 'm' }));
+
+  it('is false for an empty list', () => {
+    expect(isOverSelectLimit([])).toBe(false);
+  });
+
+  it('is false at exactly the Discord maximum', () => {
+    expect(isOverSelectLimit(list(25))).toBe(false);
+  });
+
+  it('is true one past the Discord maximum', () => {
+    expect(isOverSelectLimit(list(26))).toBe(true);
+  });
+
+  it('has a message that tells the admin the actual limit', () => {
+    expect(OVER_LIMIT_MESSAGE).toContain('25');
+  });
+
+  it('has a message that points at a command which still works', () => {
+    expect(OVER_LIMIT_MESSAGE).toContain('reorder-themes');
   });
 });
 

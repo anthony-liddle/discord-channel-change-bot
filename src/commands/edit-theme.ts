@@ -11,7 +11,9 @@ import {
 import { requireAdmin } from './index';
 import { getThemes, updateTheme } from '../themes';
 import {
+  OVER_LIMIT_MESSAGE,
   buildThemeSelectRow,
+  isOverSelectLimit,
   resolveThemeIndex,
   themeMessageText,
   themeNameText,
@@ -29,6 +31,11 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
   const themes = await getThemes();
   if (themes.length === 0) {
     await interaction.editReply({ content: 'No themes to edit.' });
+    return;
+  }
+
+  if (isOverSelectLimit(themes)) {
+    await interaction.editReply({ content: OVER_LIMIT_MESSAGE });
     return;
   }
 
