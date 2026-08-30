@@ -2,7 +2,7 @@ import { ThemeEntry, Themes } from './types';
 import fs from 'fs/promises';
 import { dataPath } from './paths';
 
-const THEMES_PATH = dataPath('themes.json');
+export const THEMES_PATH = dataPath('themes.json');
 
 let cachedThemes: ThemeEntry[] | null = null;
 

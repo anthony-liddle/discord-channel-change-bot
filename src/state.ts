@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import { dataPath } from './paths';
 import type { State } from './types';
 
-const STATE_PATH = dataPath('state.json');
+export const STATE_PATH = dataPath('state.json');
 
 let currentState: State = { currentIndex: 0 };
 
