@@ -22,6 +22,14 @@ const baseThemes = [
   { name: 'Street', message: 'Urban life.' },
 ];
 
+// The live failure shape: two entries sharing a name. Resolving by name picks
+// the first one, which is why both operations take an index instead.
+const duplicateThemes = [
+  { name: 'Monochrome', message: 'first' },
+  { name: 'Weekly Theme Thicc', message: 'second' },
+  { name: 'Weekly Theme Thicc', message: 'third' },
+];
+
 function setupThemes(themes = baseThemes) {
   vi.mocked(fsp.readFile).mockResolvedValue(
     JSON.stringify({ themes }) as unknown as Buffer,
@@ -38,8 +46,8 @@ beforeEach(async () => {
 // ─── deleteTheme ──────────────────────────────────────────────────────────────
 
 describe('deleteTheme', () => {
-  it('removes the theme with the matching name', async () => {
-    await deleteTheme('Macro');
+  it('removes the theme at the given index', async () => {
+    await deleteTheme(1);
 
     const written = JSON.parse(
       vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
@@ -51,7 +59,7 @@ describe('deleteTheme', () => {
   });
 
   it('writes to a .tmp path then renames', async () => {
-    await deleteTheme('Macro');
+    await deleteTheme(1);
 
     const tmpPath = vi.mocked(fsp.writeFile).mock.calls[0][0] as string;
     const [from, to] = vi.mocked(fsp.rename).mock.calls[0] as [string, string];
@@ -60,18 +68,33 @@ describe('deleteTheme', () => {
     expect(to).not.toContain('.tmp');
   });
 
-  it('throws when the theme name is not found', async () => {
-    await expect(deleteTheme('NonExistent')).rejects.toThrow(
-      'Theme "NonExistent" not found',
+  it('deletes the second of two entries sharing a name, not the first', async () => {
+    setupThemes(duplicateThemes);
+    await reloadThemes();
+
+    await deleteTheme(2);
+
+    const written = JSON.parse(
+      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
     );
+    expect(written.themes).toHaveLength(2);
+    expect(written.themes[1].message).toBe('second');
+  });
+
+  it('throws when the index is past the end of the list', async () => {
+    await expect(deleteTheme(9)).rejects.toThrow('No theme at position 9');
+  });
+
+  it('throws when the index is negative', async () => {
+    await expect(deleteTheme(-1)).rejects.toThrow('No theme at position -1');
   });
 });
 
 // ─── updateTheme ──────────────────────────────────────────────────────────────
 
 describe('updateTheme', () => {
-  it('updates the name and message of the matching theme', async () => {
-    await updateTheme('Macro', 'Macro Photography', 'Get really close!');
+  it('updates the name and message of the theme at the given index', async () => {
+    await updateTheme(1, 'Macro Photography', 'Get really close!');
 
     const written = JSON.parse(
       vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
@@ -84,7 +107,7 @@ describe('updateTheme', () => {
   });
 
   it('does not change other themes', async () => {
-    await updateTheme('Macro', 'Macro Photography', 'Get really close!');
+    await updateTheme(1, 'Macro Photography', 'Get really close!');
 
     const written = JSON.parse(
       vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
@@ -95,7 +118,7 @@ describe('updateTheme', () => {
   });
 
   it('writes to a .tmp path then renames', async () => {
-    await updateTheme('Macro', 'Macro Photography', 'Updated!');
+    await updateTheme(1, 'Macro Photography', 'Updated!');
 
     const tmpPath = vi.mocked(fsp.writeFile).mock.calls[0][0] as string;
     const [from, to] = vi.mocked(fsp.rename).mock.calls[0] as [string, string];
@@ -104,10 +127,38 @@ describe('updateTheme', () => {
     expect(to).not.toContain('.tmp');
   });
 
-  it('throws when the theme name is not found', async () => {
+  it('edits the second of two entries sharing a name, not the first', async () => {
+    setupThemes(duplicateThemes);
+    await reloadThemes();
+
+    await updateTheme(2, 'Weekly Theme Thicc Two', 'renamed');
+
+    const written = JSON.parse(
+      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
+    );
+    expect(written.themes[1]).toEqual({
+      name: 'Weekly Theme Thicc',
+      message: 'second',
+    });
+    expect(written.themes[2]).toEqual({
+      name: 'Weekly Theme Thicc Two',
+      message: 'renamed',
+    });
+  });
+
+  it('can rename an entry whose current name is a duplicate', async () => {
+    setupThemes(duplicateThemes);
+    await reloadThemes();
+
     await expect(
-      updateTheme('NonExistent', 'New Name', 'New message'),
-    ).rejects.toThrow('Theme "NonExistent" not found');
+      updateTheme(1, 'Weekly Theme Thicc One', 'kept'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('throws when the index is past the end of the list', async () => {
+    await expect(updateTheme(9, 'New Name', 'New message')).rejects.toThrow(
+      'No theme at position 9',
+    );
   });
 });
 

@@ -52,14 +52,22 @@ export async function saveThemes(themes: ThemeEntry[]): Promise<void> {
   await fs.rename(tempPath, THEMES_PATH);
 }
 
-function themeMatchesName(t: ThemeEntry, name: string): boolean {
-  return (typeof t === 'string' ? t : t.name) === name;
+/**
+ * Both mutating operations address a theme by its position in the array, never
+ * by name. Two themes are allowed to share a name in existing data, and
+ * resolving by name silently picks the first match.
+ */
+function assertIndexInRange(index: number, length: number): void {
+  if (!Number.isInteger(index) || index < 0 || index >= length) {
+    throw new Error(
+      `No theme at position ${index}. The list has ${length} themes.`,
+    );
+  }
 }
 
-export async function deleteTheme(name: string): Promise<void> {
+export async function deleteTheme(index: number): Promise<void> {
   const themes = await getThemes();
-  const index = themes.findIndex((t) => themeMatchesName(t, name));
-  if (index === -1) throw new Error(`Theme "${name}" not found`);
+  assertIndexInRange(index, themes.length);
 
   const updated = [...themes.slice(0, index), ...themes.slice(index + 1)];
   cachedThemes = updated;
@@ -96,13 +104,12 @@ export async function reorderTheme(
 }
 
 export async function updateTheme(
-  name: string,
+  index: number,
   newName: string,
   newMessage: string,
 ): Promise<void> {
   const themes = await getThemes();
-  const index = themes.findIndex((t) => themeMatchesName(t, name));
-  if (index === -1) throw new Error(`Theme "${name}" not found`);
+  assertIndexInRange(index, themes.length);
 
   const updated = themes.map((t, i) =>
     i === index ? { name: newName, message: newMessage } : t,

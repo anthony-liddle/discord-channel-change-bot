@@ -5,12 +5,14 @@ import {
   ButtonStyle,
   ComponentType,
   MessageFlags,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
 } from 'discord.js';
 import { requireAdmin } from './index';
 import { getThemes, deleteTheme } from '../themes';
-import { getThemeName } from '../rotation';
+import {
+  buildThemeSelectRow,
+  resolveThemeIndex,
+  themeOptionLabel,
+} from './theme-picker';
 
 export const deleteThemeCmd: CommandHandler = async (interaction) => {
   if (!requireAdmin(interaction)) return;
@@ -24,19 +26,11 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
     return;
   }
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`deleteThemeSelect-${interaction.user.id}`)
-    .setPlaceholder('Select a theme to delete')
-    .addOptions(
-      themes.map((t) =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(getThemeName(t))
-          .setValue(getThemeName(t)),
-      ),
-    );
-
-  const selectRow =
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+  const selectRow = buildThemeSelectRow(
+    `deleteThemeSelect-${interaction.user.id}`,
+    'Select a theme to delete',
+    themes,
+  );
 
   const response = await interaction.reply({
     content: 'Which theme would you like to delete?',
@@ -58,11 +52,23 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
     return;
   }
 
-  const themeName = selectInteraction.values[0];
+  // Position, not name. Deleting one of two identically named themes has to
+  // remove the one that was actually picked.
+  const index = resolveThemeIndex(selectInteraction.values[0], themes);
+  if (index === -1) {
+    await selectInteraction.update({
+      content:
+        'That theme is no longer at the position it was selected from. Run the command again.',
+      components: [],
+    });
+    return;
+  }
+
+  const themeLabel = themeOptionLabel(themes[index], index);
 
   const confirmBtn = new ButtonBuilder()
     .setCustomId(`deleteThemeConfirm-${interaction.user.id}`)
-    .setLabel(`Delete "${themeName}"`)
+    .setLabel('Delete')
     .setStyle(ButtonStyle.Danger);
 
   const cancelBtn = new ButtonBuilder()
@@ -76,7 +82,7 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
   );
 
   await selectInteraction.update({
-    content: `Are you sure you want to delete **${themeName}**? This cannot be undone.`,
+    content: `Are you sure you want to delete **${themeLabel}**? This cannot be undone.`,
     components: [buttonRow],
   });
 
@@ -103,15 +109,14 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
   }
 
   try {
-    await deleteTheme(themeName);
+    await deleteTheme(index);
     await buttonInteraction.update({
-      content: `Theme **${themeName}** has been deleted.`,
+      content: `Theme **${themeLabel}** has been deleted.`,
       components: [],
     });
   } catch (err) {
-    console.error(err);
     await buttonInteraction.update({
-      content: 'Failed to delete theme. Check the bot logs for details.',
+      content: `Failed to delete theme.\n> ${(err as Error).message}`,
       components: [],
     });
   }
