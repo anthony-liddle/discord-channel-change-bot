@@ -649,21 +649,40 @@ fly launch --no-deploy
 Answer the prompts:
 
 - **App name**: pick one. It must be globally unique. Write it down.
-- **Region**: pick the one nearest you. `sea` for Seattle.
+- **Region**: pick from the list Fly offers you. `sjc` is San Jose, the
+  closest to the Pacific Northwest that is reliably available. Write it down,
+  because the volume has to be created in the same region.
 - **Postgres / Redis / other databases**: **no** to all. This bot uses files.
 - **Deploy now**: **no**. The volume does not exist yet.
 
 `fly launch` will notice the existing `fly.toml` and may offer to overwrite it.
-**Keep the existing one.** If it rewrites it anyway, diff against your backup
-and put back anything it dropped:
+**Keep the existing one.** If it rewrites it anyway, diff against your backup:
 
 ```bash
 diff fly.toml.bak fly.toml
 ```
 
-The `[mounts]` and `[env]` blocks are what make the state persist. Losing either
-is the one mistake that silently wipes the theme list on every deploy, so
-confirm both are still present before you go on.
+Two things to check, and both have actually happened:
+
+**1. `[mounts]` and `[env]` must still be there.** They are what make the state
+persist. Losing either silently wipes the theme list on every deploy.
+
+**2. Delete any `[http_service]` block it added.** `fly launch` assumes it is
+configuring a website and writes one in. This bot is a worker that listens on no
+port, and that block breaks it in a way that looks like nothing is wrong:
+
+```toml
+[http_service]           # delete all of this
+  internal_port = 3000
+  auto_stop_machines = 'stop'
+  min_machines_running = 0
+```
+
+`auto_stop_machines` with `min_machines_running = 0` tells Fly to stop the
+machine when no HTTP requests arrive. None ever will, so Fly stops it and the
+weekly rotation never fires again. `internal_port` also aims health checks at a
+port nothing is listening on. With no services defined at all, Fly has nothing
+to idle and the machine runs continuously, which is what a worker needs.
 
 ### 7.3 Create The Volume
 
@@ -671,10 +690,13 @@ The volume is the persistent disk. One gigabyte is far more than this bot will
 ever need and is the smallest useful size.
 
 ```bash
-fly volumes create theme_bot_data --size 1 --region sea
+fly volumes create theme_bot_data --size 1 --region sjc
 ```
 
-The name must match `source` in `fly.toml` and the region must match the app's.
+The name must match `source` in `fly.toml`, and **the region must match the
+region you chose in 7.2**. A volume in a different region to the machine cannot
+be mounted, and the machine will fail to start. Substitute your region if it is
+not `sjc`; check with `fly status`, which prints the machine's region.
 
 Success: `fly volumes list` shows one volume.
 
@@ -701,12 +723,30 @@ fly deploy
 
 This builds the Dockerfile and starts one machine.
 
-Success: `fly status` shows one machine in `started` state.
+**`fly deploy` will report success. Do not trust it.** Fly considers a deploy
+successful once the machine starts, and does not care whether your process
+exited a second later. The only way to know what happened is the log:
 
-**Expected on this first run: the bot crashes.** `/data` is empty, so there is
-no `config.json`, and the bot exits with
-`config.json not found. Please create it from config.example.json`. That is
-correct behaviour and the next step fixes it. Confirm it with `fly logs`.
+```bash
+fly logs -a <your-app-name> --no-tail
+```
+
+**Expected on this first run: the bot crash-loops.** `/data` is empty, so there
+is no `config.json`, and you will see this repeating every few seconds:
+
+```
+Error: config.json not found. Please create it from config.example.json
+INFO Main child exited normally with code: 1
+```
+
+That is correct behaviour and the next step fixes it. What you should not see is
+silence: no log lines at all means the machine never started.
+
+Check `fly status` too. If it says `stopped` rather than `started`, an
+`[http_service]` block survived into your `fly.toml` and Fly has idled the
+machine. Go back to 7.2 and remove it, because **you cannot seed a stopped
+machine**: `fly ssh` and `fly ssh sftp` both fail with
+`app <name> has no started VMs`.
 
 ### 7.6 Seed The Volume
 
@@ -742,6 +782,14 @@ put ~/theme-bot-data/state.json /data/state.json
 put ~/theme-bot-data/config.json /data/config.json
 exit
 ```
+
+> **Only `config.json` is actually required to boot.** A missing `themes.json`
+> logs an error and leaves the bot with no themes. A missing `state.json` throws
+> nothing at all and silently starts the rotation at index 0. That is a trap
+> worth knowing: 0 is also one of the candidate values in the index decision, so
+> "I forgot to upload state.json" and "I deliberately chose 0" produce identical
+> behaviour and identical logs. Upload it explicitly even when the value you
+> want is 0.
 
 Read them back to confirm all three arrived intact:
 
