@@ -1,0 +1,32 @@
+# Fly.io configuration for the theme bot.
+#
+# This is a worker, not a website. It opens an outbound gateway connection to
+# Discord and listens on no port, so there is deliberately no [http_service]
+# block. That also means Fly never idles the machine to zero.
+#
+# Replace the app name below with the one you chose, or let `fly launch` write
+# it for you. Everything else can stay as is.
+
+app = "pnwkc-theme-bot"
+primary_region = "sea"
+
+[build]
+
+[env]
+  # Must match the mount destination below. Without this the bot writes its
+  # state into the application directory, which Fly rebuilds on every deploy.
+  DATA_DIR = "/data"
+  TZ = "UTC"
+
+[mounts]
+  source = "theme_bot_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+  cpus = 1
+
+# Never run more than one machine. Two instances would both fire the weekly
+# cron, so the channel would be renamed twice and the announcement posted
+# twice. Check with `fly status` and correct with `fly scale count 1`.

@@ -1,8 +1,8 @@
 import { ThemeEntry, Themes } from './types';
 import fs from 'fs/promises';
-import path from 'path';
+import { dataPath } from './paths';
 
-const THEMES_PATH = path.join(__dirname, '..', '..', 'themes.json');
+const THEMES_PATH = dataPath('themes.json');
 
 let cachedThemes: ThemeEntry[] | null = null;
 

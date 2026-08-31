@@ -1,9 +1,9 @@
 import fs from 'fs';
 import fsp from 'fs/promises';
-import path from 'path';
+import { dataPath } from './paths';
 import type { Config } from './types';
 
-const CONFIG_PATH = path.join(__dirname, '..', '..', 'config.json');
+const CONFIG_PATH = dataPath('config.json');
 
 let cachedConfig: Config | null = null;
 

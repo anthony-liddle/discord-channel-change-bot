@@ -26,3 +26,7 @@ Thumbs.db
 # Vanilla NPM
 package-lock.json
 
+# Community-specific content that must never be published. docs/HOSTING.md is
+# the generic procedure; the actual theme names, messages and rotation position
+# live here and stay local.
+docs/THEME-LIST.md
