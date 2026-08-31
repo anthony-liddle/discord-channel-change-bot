@@ -750,12 +750,61 @@ machine**: `fly ssh` and `fly ssh sftp` both fail with
 
 ### 7.6 Seed The Volume
 
-This is the chicken-and-egg step: the volume only exists once the app is
-deployed, but the app needs files on the volume to start.
+This is the chicken-and-egg step, and it is sharper than it sounds: the volume
+only exists once the app is deployed, but the app will not stay running long
+enough to be seeded until the volume has files on it.
 
-**Upload all three files rather than typing them into a container shell.** You
-already built and validated them in [Part 5](#5-building-the-theme-files), and
-uploading sidesteps shell quoting entirely.
+**Read this before you start, because the obvious approach deadlocks.**
+
+After 7.5 the machine is crash-looping on the missing `config.json`. Fly retries
+it ten times and then gives up:
+
+```
+machine has reached its max restart count of 10
+```
+
+At that point `fly status` shows `stopped`, and **a stopped machine cannot be
+seeded**. Both of these fail:
+
+```
+Error: app <name> has no started VMs.
+```
+
+So the interactive `fly ssh sftp shell` in the obvious version of this step
+cannot connect, and you are stuck.
+
+**The way through: `config.json` is the only file that gates startup.** Land
+that one file and the bot boots and stays up, after which the other two are
+easy. Starting the machine resets the restart counter and gives you a window of
+roughly twelve seconds per cycle, which is plenty for one small upload.
+
+Use the non-interactive `fly ssh sftp put` rather than the shell, so it can be
+retried in a loop:
+
+```bash
+D=~/theme-bot-data
+fly machine start <machine-id> -a <your-app-name>
+
+for i in $(seq 1 15); do
+  if fly ssh sftp put "$D/config.json" /data/config.json -a <your-app-name>; then
+    echo "landed on attempt $i"; break
+  fi
+  sleep 4
+done
+```
+
+Get `<machine-id>` from `fly status`. In practice this lands on the first
+attempt. Once it does, the machine stops crashing and the remaining two uploads
+need no retry loop at all:
+
+```bash
+fly ssh sftp put "$D/themes.json" /data/themes.json -a <your-app-name>
+fly ssh sftp put "$D/state.json"  /data/state.json  -a <your-app-name>
+```
+
+**Upload files rather than typing them into a container shell.** You already
+built and validated them in [Part 5](#5-building-the-theme-files), and uploading
+sidesteps shell quoting entirely.
 
 > This matters more than it looks. Typing JSON into a remote shell is where this
 > goes wrong: `echo {"currentIndex":0} > /data/state.json` looks correct and
@@ -764,23 +813,12 @@ uploading sidesteps shell quoting entirely.
 > wrong theme without ever reporting an error. Upload files you have already
 > checked.
 
-Validate locally one more time, then upload:
+Validate all three locally before uploading any of them:
 
 ```bash
 for f in themes state config; do
   node -e "JSON.parse(require('fs').readFileSync('$HOME/theme-bot-data/$f.json','utf8'));console.log('$f.json ok')"
 done
-
-fly ssh sftp shell
-```
-
-At the `sftp>` prompt:
-
-```
-put ~/theme-bot-data/themes.json /data/themes.json
-put ~/theme-bot-data/state.json /data/state.json
-put ~/theme-bot-data/config.json /data/config.json
-exit
 ```
 
 > **Only `config.json` is actually required to boot.** A missing `themes.json`
