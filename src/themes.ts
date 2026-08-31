@@ -2,12 +2,44 @@ import { ThemeEntry, Themes } from './types';
 import fs from 'fs/promises';
 import { dataPath } from './paths';
 
-const THEMES_PATH = dataPath('themes.json');
+export const THEMES_PATH = dataPath('themes.json');
 
 let cachedThemes: ThemeEntry[] | null = null;
 
+/**
+ * Compared trimmed and case insensitively because normalizeChannelName
+ * lowercases and collapses whitespace, so "Thicc" and " thicc " both rename the
+ * channel to the same thing. Two themes that produce the same channel name are
+ * duplicates for every purpose the bot has.
+ */
+function comparableName(theme: ThemeEntry): string {
+  const raw = typeof theme === 'string' ? theme : theme?.name;
+  return String(raw ?? '')
+    .trim()
+    .toLowerCase();
+}
+
+function assertNameIsFree(
+  themes: ThemeEntry[],
+  name: string,
+  ignoreIndex = -1,
+): void {
+  const candidate = name.trim().toLowerCase();
+  const clash = themes.findIndex(
+    (theme, i) => i !== ignoreIndex && comparableName(theme) === candidate,
+  );
+  if (clash !== -1) {
+    throw new Error(
+      `A theme named "${name.trim()}" already exists at position ${clash + 1}. ` +
+        'Pick a different name, or edit that entry instead.',
+    );
+  }
+}
+
 export async function addTheme(name: string, message: string): Promise<void> {
   const themes = await getThemes();
+  assertNameIsFree(themes, name);
+
   const tempPath = `${THEMES_PATH}.tmp`;
 
   themes.push({ name, message });
@@ -52,14 +84,22 @@ export async function saveThemes(themes: ThemeEntry[]): Promise<void> {
   await fs.rename(tempPath, THEMES_PATH);
 }
 
-function themeMatchesName(t: ThemeEntry, name: string): boolean {
-  return (typeof t === 'string' ? t : t.name) === name;
+/**
+ * Both mutating operations address a theme by its position in the array, never
+ * by name. Two themes are allowed to share a name in existing data, and
+ * resolving by name silently picks the first match.
+ */
+function assertIndexInRange(index: number, length: number): void {
+  if (!Number.isInteger(index) || index < 0 || index >= length) {
+    throw new Error(
+      `No theme at position ${index}. The list has ${length} themes.`,
+    );
+  }
 }
 
-export async function deleteTheme(name: string): Promise<void> {
+export async function deleteTheme(index: number): Promise<void> {
   const themes = await getThemes();
-  const index = themes.findIndex((t) => themeMatchesName(t, name));
-  if (index === -1) throw new Error(`Theme "${name}" not found`);
+  assertIndexInRange(index, themes.length);
 
   const updated = [...themes.slice(0, index), ...themes.slice(index + 1)];
   cachedThemes = updated;
@@ -96,13 +136,15 @@ export async function reorderTheme(
 }
 
 export async function updateTheme(
-  name: string,
+  index: number,
   newName: string,
   newMessage: string,
 ): Promise<void> {
   const themes = await getThemes();
-  const index = themes.findIndex((t) => themeMatchesName(t, name));
-  if (index === -1) throw new Error(`Theme "${name}" not found`);
+  assertIndexInRange(index, themes.length);
+  // The entry being edited is exempt, so keeping its own name is allowed even
+  // when a duplicate of it exists elsewhere in the list.
+  assertNameIsFree(themes, newName, index);
 
   const updated = themes.map((t, i) =>
     i === index ? { name: newName, message: newMessage } : t,

@@ -6,7 +6,7 @@ import { requireAdmin } from './index';
 import { getThemes } from '../themes';
 
 export const rotateNow: CommandHandler = async (interaction, context) => {
-  if (!requireAdmin(interaction)) return;
+  if (!(await requireAdmin(interaction))) return;
 
   if (isRotationInProgress()) {
     await interaction.reply({

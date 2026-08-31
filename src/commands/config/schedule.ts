@@ -62,7 +62,7 @@ export function formatSchedule(cron: string, timezone: string): string {
 }
 
 export const configSchedule: CommandHandler = async (interaction, context) => {
-  if (!requireAdmin(interaction)) return;
+  if (!(await requireAdmin(interaction))) return;
 
   const config = context.config;
   const currentCron = config.schedule ?? '0 9 * * 1';

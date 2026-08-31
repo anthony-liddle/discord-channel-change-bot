@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 
 export const configChannel: CommandHandler = async (interaction, context) => {
-  if (!requireAdmin(interaction)) return;
+  if (!(await requireAdmin(interaction))) return;
 
   const currentChannelId = context.config.channelId;
 

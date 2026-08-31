@@ -14,14 +14,14 @@ import { deleteThemeCmd } from './delete-theme';
 import { editThemeCmd } from './edit-theme';
 import { reorderThemesCmd } from './reorder-themes';
 
-export function requireAdmin(
+export async function requireAdmin(
   interaction: ChatInputCommandInteraction,
-): boolean {
+): Promise<boolean> {
   if (
     !interaction.inGuild() ||
     !interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
   ) {
-    interaction.reply({
+    await interaction.reply({
       content: 'You need Administrator permission to use this command.',
       flags: MessageFlags.Ephemeral,
     });

@@ -111,7 +111,7 @@ function buildStep2Components(
 }
 
 export const reorderThemesCmd: CommandHandler = async (interaction) => {
-  if (!requireAdmin(interaction)) return;
+  if (!(await requireAdmin(interaction))) return;
 
   const userId = interaction.user.id;
   let themes = await getThemes();

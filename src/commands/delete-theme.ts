@@ -5,43 +5,45 @@ import {
   ButtonStyle,
   ComponentType,
   MessageFlags,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
 } from 'discord.js';
 import { requireAdmin } from './index';
 import { getThemes, deleteTheme } from '../themes';
-import { getThemeName } from '../rotation';
+import {
+  OVER_LIMIT_MESSAGE,
+  buildThemeSelectRow,
+  isOverSelectLimit,
+  resolveThemeIndex,
+  themeOptionLabel,
+} from './theme-picker';
 
 export const deleteThemeCmd: CommandHandler = async (interaction) => {
-  if (!requireAdmin(interaction)) return;
+  if (!(await requireAdmin(interaction))) return;
+
+  // Acknowledge before building any component. Builder validation throws
+  // synchronously, and anything thrown before the acknowledgement shows up in
+  // Discord as "The application did not respond" with no way to see why.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const themes = await getThemes();
   if (themes.length === 0) {
-    await interaction.reply({
-      content: 'No themes to delete.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.editReply({ content: 'No themes to delete.' });
     return;
   }
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`deleteThemeSelect-${interaction.user.id}`)
-    .setPlaceholder('Select a theme to delete')
-    .addOptions(
-      themes.map((t) =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(getThemeName(t))
-          .setValue(getThemeName(t)),
-      ),
-    );
+  if (isOverSelectLimit(themes)) {
+    await interaction.editReply({ content: OVER_LIMIT_MESSAGE });
+    return;
+  }
 
-  const selectRow =
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+  const selectRow = buildThemeSelectRow(
+    `deleteThemeSelect-${interaction.user.id}`,
+    'Select a theme to delete',
+    themes,
+  );
 
-  const response = await interaction.reply({
+  const response = await interaction.editReply({
     content: 'Which theme would you like to delete?',
     components: [selectRow],
-    flags: MessageFlags.Ephemeral,
   });
 
   let selectInteraction;
@@ -58,11 +60,23 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
     return;
   }
 
-  const themeName = selectInteraction.values[0];
+  // Position, not name. Deleting one of two identically named themes has to
+  // remove the one that was actually picked.
+  const index = resolveThemeIndex(selectInteraction.values[0], themes);
+  if (index === -1) {
+    await selectInteraction.update({
+      content:
+        'That theme is no longer at the position it was selected from. Run the command again.',
+      components: [],
+    });
+    return;
+  }
+
+  const themeLabel = themeOptionLabel(themes[index], index);
 
   const confirmBtn = new ButtonBuilder()
     .setCustomId(`deleteThemeConfirm-${interaction.user.id}`)
-    .setLabel(`Delete "${themeName}"`)
+    .setLabel('Delete')
     .setStyle(ButtonStyle.Danger);
 
   const cancelBtn = new ButtonBuilder()
@@ -76,7 +90,7 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
   );
 
   await selectInteraction.update({
-    content: `Are you sure you want to delete **${themeName}**? This cannot be undone.`,
+    content: `Are you sure you want to delete **${themeLabel}**? This cannot be undone.`,
     components: [buttonRow],
   });
 
@@ -103,15 +117,14 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
   }
 
   try {
-    await deleteTheme(themeName);
+    await deleteTheme(index);
     await buttonInteraction.update({
-      content: `Theme **${themeName}** has been deleted.`,
+      content: `Theme **${themeLabel}** has been deleted.`,
       components: [],
     });
   } catch (err) {
-    console.error(err);
     await buttonInteraction.update({
-      content: 'Failed to delete theme. Check the bot logs for details.',
+      content: `Failed to delete theme.\n> ${(err as Error).message}`,
       components: [],
     });
   }
