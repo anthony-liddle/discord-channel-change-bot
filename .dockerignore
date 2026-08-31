@@ -1,0 +1,18 @@
+node_modules
+dist
+.git
+.github
+.husky
+docs
+coverage
+
+# Never bake secrets or live state into the image. These belong on the
+# persistent volume and in the host's secret store.
+.env
+.env.*
+config.json
+themes.json
+state.json
+*.log
+
+.DS_Store

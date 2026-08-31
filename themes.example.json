@@ -1,0 +1,16 @@
+{
+  "themes": [
+    {
+      "name": "Weekly theme one",
+      "message": "Announcement posted when this theme becomes active."
+    },
+    {
+      "name": "Weekly theme two",
+      "message": "Supports Discord markdown."
+    },
+    {
+      "name": "Weekly theme three",
+      "message": ""
+    }
+  ]
+}
