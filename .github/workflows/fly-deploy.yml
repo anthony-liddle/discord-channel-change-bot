@@ -1,0 +1,28 @@
+# See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
+#
+# Actions are pinned to commit SHAs rather than tags or branches. This job
+# holds FLY_API_TOKEN, which can deploy arbitrary code to the machine that
+# holds DISCORD_TOKEN, so a compromised action here reaches the bot token.
+# Tags and branches can both be moved; a SHA cannot. Update these
+# deliberately, with the version noted in the trailing comment.
+
+name: Fly Deploy
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    name: Deploy app
+    runs-on: ubuntu-latest
+    # Only one deploy at a time. Two live bot processes would both fire the
+    # weekly cron and rename the channel twice.
+    concurrency: deploy-group
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
