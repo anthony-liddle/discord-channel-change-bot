@@ -15,4 +15,4 @@
  * Hand maintained on purpose. No build step, no codegen, no git SHA injection,
  * because the deploy might not ship `.git` or run anything beyond a build.
  */
-export const DEPLOY_MARKER = '2026-08-30.1';
+export const DEPLOY_MARKER = '2026-09-01.1';
