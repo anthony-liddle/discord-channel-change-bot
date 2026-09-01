@@ -14,9 +14,14 @@ import { formatHandlerError } from '../interaction-errors';
 
 export const addThemeCmd: CommandHandler = async (interaction) => {
   if (!(await requireAdmin(interaction))) return;
-  const modal = new ModalBuilder()
-    .setCustomId(`createThemeModal-${interaction.user.id}`)
-    .setTitle('New Theme');
+  // Scoped to this invocation, not to the user. awaitModalSubmit collects
+  // client-wide filtered only by customId, so a customId shared across
+  // invocations lets two live collectors both take one submit and call
+  // addTheme twice, which is the most plausible origin of the duplicate entry
+  // that broke edit-theme.
+  const modalId = `createThemeModal-${interaction.id}`;
+
+  const modal = new ModalBuilder().setCustomId(modalId).setTitle('New Theme');
 
   const themeNameInput = new TextInputBuilder()
     .setCustomId('themeName')
@@ -47,7 +52,8 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
   await interaction.showModal(modal);
 
   const filter = (modalInteraction: ModalSubmitInteraction) =>
-    modalInteraction.customId === `createThemeModal-${interaction.user.id}`;
+    modalInteraction.customId === modalId &&
+    modalInteraction.user.id === interaction.user.id;
 
   let modalInteraction: ModalSubmitInteraction;
   try {
