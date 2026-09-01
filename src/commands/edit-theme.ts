@@ -39,8 +39,15 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
     return;
   }
 
+  // Scoped to this invocation, not to the user. awaitModalSubmit builds a
+  // client-wide collector filtered only by customId, so a customId shared
+  // across invocations lets an abandoned run capture a later run's submit and
+  // write to the index IT resolved. interaction.id is unique per invocation.
+  const selectId = `editThemeSelect-${interaction.id}`;
+  const modalId = `editThemeModal-${interaction.id}`;
+
   const selectRow = buildThemeSelectRow(
-    `editThemeSelect-${interaction.user.id}`,
+    selectId,
     'Select a theme to edit',
     themes,
   );
@@ -55,8 +62,7 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
     selectInteraction = await response.awaitMessageComponent({
       componentType: ComponentType.StringSelect,
       filter: (i) =>
-        i.customId === `editThemeSelect-${interaction.user.id}` &&
-        i.user.id === interaction.user.id,
+        i.customId === selectId && i.user.id === interaction.user.id,
       time: 5 * 60 * 1000,
     });
   } catch {
@@ -81,9 +87,7 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
   const currentName = themeNameText(theme);
   const currentMessage = themeMessageText(theme);
 
-  const modal = new ModalBuilder()
-    .setCustomId(`editThemeModal-${interaction.user.id}`)
-    .setTitle('Edit Theme');
+  const modal = new ModalBuilder().setCustomId(modalId).setTitle('Edit Theme');
 
   const nameInput = new TextInputBuilder()
     .setCustomId('themeName')
@@ -111,8 +115,18 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
 
   await selectInteraction.showModal(modal);
 
+  // The select is still on screen and still clickable, but its collector is
+  // spent. Clear it, or a second click returns Discord's bare "didn't respond
+  // in time" with no explanation.
+  await interaction.editReply({
+    content:
+      `Editing **${currentLabel}**. Submit the form to save your changes.\n` +
+      'To edit a different theme, run `/theme-bot edit-theme` again.',
+    components: [],
+  });
+
   const filter = (i: ModalSubmitInteraction) =>
-    i.customId === `editThemeModal-${interaction.user.id}`;
+    i.customId === modalId && i.user.id === interaction.user.id;
 
   let modalInteraction: ModalSubmitInteraction;
   try {
