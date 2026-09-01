@@ -204,3 +204,54 @@ describe('edit-theme modal scoping', () => {
     expect(updateTheme).not.toHaveBeenCalled();
   });
 });
+
+describe('edit-theme picker teardown', () => {
+  it('clears the components once the modal has been shown', async () => {
+    const a = makeInvocation('inv-A');
+    a.select.values = ['2'];
+    void editThemeCmd(
+      a.interaction as unknown as ChatInputCommandInteraction,
+      {} as never,
+    );
+    await settle();
+
+    expect(a.select.showModal).toHaveBeenCalled();
+    const cleared = a.interaction.editReply.mock.calls.filter(
+      (c) => Array.isArray(c[0]?.components) && c[0].components.length === 0,
+    );
+    expect(cleared.length).toBeGreaterThan(0);
+  });
+
+  it('names the entry being edited in the replacement content', async () => {
+    const a = makeInvocation('inv-A');
+    a.select.values = ['2'];
+    void editThemeCmd(
+      a.interaction as unknown as ChatInputCommandInteraction,
+      {} as never,
+    );
+    await settle();
+
+    const cleared = a.interaction.editReply.mock.calls
+      .map((c) => c[0])
+      .filter((p) => Array.isArray(p?.components) && p.components.length === 0);
+    const text = cleared.map((p) => p.content).join('\n');
+    expect(text).toContain('Weekly theme senses');
+  });
+
+  it('tells the admin to run the command again for a different theme', async () => {
+    const a = makeInvocation('inv-A');
+    a.select.values = ['2'];
+    void editThemeCmd(
+      a.interaction as unknown as ChatInputCommandInteraction,
+      {} as never,
+    );
+    await settle();
+
+    const text = a.interaction.editReply.mock.calls
+      .map((c) => c[0])
+      .filter((p) => Array.isArray(p?.components) && p.components.length === 0)
+      .map((p) => p.content)
+      .join('\n');
+    expect(text).toMatch(/again/i);
+  });
+});

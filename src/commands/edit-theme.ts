@@ -115,6 +115,16 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
 
   await selectInteraction.showModal(modal);
 
+  // The select is still on screen and still clickable, but its collector is
+  // spent. Clear it, or a second click returns Discord's bare "didn't respond
+  // in time" with no explanation.
+  await interaction.editReply({
+    content:
+      `Editing **${currentLabel}**. Submit the form to save your changes.\n` +
+      'To edit a different theme, run `/theme-bot edit-theme` again.',
+    components: [],
+  });
+
   const filter = (i: ModalSubmitInteraction) =>
     i.customId === modalId && i.user.id === interaction.user.id;
 
