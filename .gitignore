@@ -30,3 +30,4 @@ package-lock.json
 # the generic procedure; the actual theme names, messages and rotation position
 # live here and stay local.
 docs/THEME-LIST.md
+backups/
