@@ -18,6 +18,7 @@ import { themeNameText } from './theme-picker';
 import {
   applyMove,
   buildReorderPages,
+  checkMovePositions,
   pageContaining,
   parseMove,
 } from './reorder-view';
@@ -216,6 +217,18 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
 
     if (!move.ok) {
       notice = `Not moved. ${move.reason}`;
+      await interaction.editReply(render());
+      continue;
+    }
+
+    // parseMove only ever saw the list as it was when the form was opened. A
+    // scheduled rotation can advance currentIndex while the form is open, and
+    // another session can add or remove a theme, so the resolved positions are
+    // checked again here, against the list actually about to be written.
+    themes = await getThemes();
+    const stillValid = checkMovePositions(move.from, move.to, themes.length);
+    if (!stillValid.ok) {
+      notice = `Not moved. ${stillValid.reason}`;
       await interaction.editReply(render());
       continue;
     }

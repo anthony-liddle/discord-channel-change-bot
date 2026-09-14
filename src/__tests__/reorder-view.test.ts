@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import type { ThemeEntry } from '../types';
 import { buildRotatedView } from '../commands/reorder-themes';
 import {
+  CURRENT_SLOT,
   REORDER_TEXT_BUDGET,
   applyMove,
   buildReorderPages,
+  checkMovePositions,
   parseMove,
   pageContaining,
 } from '../commands/reorder-view';
@@ -128,7 +130,7 @@ describe('parseMove', () => {
   });
 
   it('ignores surrounding whitespace', () => {
-    expect(parseMove('  5 ', ' 1  ', 10)).toEqual({ ok: true, from: 4, to: 0 });
+    expect(parseMove('  5 ', ' 2  ', 10)).toEqual({ ok: true, from: 4, to: 1 });
   });
 
   it('refuses a position of zero, because the list is numbered from one', () => {
@@ -169,10 +171,12 @@ describe('applyMove', () => {
   const names = (themes: ThemeEntry[]) =>
     themes.map((t) => (t as { name: string }).name);
 
-  it('moves a theme from the end to the front', () => {
+  // Position 1 is the current rotation slot and is refused, so the front of the
+  // queue an admin can actually move into is position 2.
+  it('moves a theme from the end to the front of the queue', () => {
     const themes = list(5);
-    const moved = applyMove(themes, 0, 4, 0);
-    expect(names(moved)[0]).toBe('Fixture 5xxxxxxxxxxx');
+    const moved = applyMove(themes, 0, 4, 1);
+    expect(names(moved)[1]).toBe('Fixture 5xxxxxxxxxxx');
   });
 
   it('keeps every theme when moving', () => {
@@ -184,12 +188,12 @@ describe('applyMove', () => {
 
   it('moves a theme forwards without dropping the ones it passes', () => {
     const themes = list(5);
-    const moved = applyMove(themes, 0, 0, 3);
+    const moved = applyMove(themes, 0, 1, 3);
     expect(names(moved)).toEqual([
-      'Fixture 2xxxxxxxxxxx',
+      'Fixture 1xxxxxxxxxxx',
       'Fixture 3xxxxxxxxxxx',
       'Fixture 4xxxxxxxxxxx',
-      'Fixture 1xxxxxxxxxxx',
+      'Fixture 2xxxxxxxxxxx',
       'Fixture 5xxxxxxxxxxx',
     ]);
   });
@@ -198,14 +202,117 @@ describe('applyMove', () => {
   // current. Writing back has to preserve that mapping or the rotation jumps.
   it('writes back in file order when the view starts partway through', () => {
     const themes = list(4);
-    const moved = applyMove(themes, 2, 0, 1);
+    const moved = applyMove(themes, 2, 3, 1);
     expect(moved).toHaveLength(4);
     expect(new Set(names(moved)).size).toBe(4);
   });
 
   it('leaves the list unchanged in length at any size', () => {
     for (const count of [24, 25, 26, 200]) {
-      expect(applyMove(list(count), 0, count - 1, 0)).toHaveLength(count);
+      expect(applyMove(list(count), 0, count - 1, 1)).toHaveLength(count);
     }
+  });
+});
+
+// ─── the current rotation slot ────────────────────────────────────────────────
+
+/**
+ * Display position 1 is the current rotation slot. The list always starts
+ * there, and the current theme is followed by name so reordering never makes
+ * the rotation skip, which together mean nothing can move into or out of
+ * position 1 visibly. Before this guard both directions were silent no-ops
+ * reported as successes.
+ *
+ * The rule is shift proof at any layer: display index 0 is the current slot by
+ * construction, whatever currentIndex happens to be.
+ */
+describe('parseMove refuses the current rotation slot', () => {
+  it('refuses moving the theme at position 1', () => {
+    expect(parseMove('1', '5', 10).ok).toBe(false);
+  });
+
+  it('refuses moving a theme into position 1', () => {
+    expect(parseMove('5', '1', 10).ok).toBe(false);
+  });
+
+  it('still allows moves that do not touch position 1', () => {
+    expect(parseMove('5', '2', 10).ok).toBe(true);
+  });
+
+  it('points at position 2 as the soonest a move can take effect', () => {
+    const result = parseMove('5', '1', 10);
+    if (!result.ok) expect(result.reason).toMatch(/\b2\b/);
+  });
+
+  // The message has to be as true on day six of a rotation as on day one, so
+  // it describes the slot structurally rather than by what it currently holds.
+  for (const [from, to] of [
+    ['1', '5'],
+    ['5', '1'],
+  ]) {
+    it(`describes position 1 structurally when moving ${from} to ${to}`, () => {
+      const result = parseMove(from, to, 10);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.reason).toMatch(/current rotation slot/i);
+      for (const timeBound of [
+        'this week',
+        'already running',
+        'today',
+        'right now',
+        'currently showing',
+      ]) {
+        expect(result.reason.toLowerCase()).not.toContain(timeBound);
+      }
+    });
+  }
+});
+
+// parseMove sees the list as it was when the form was opened. Between opening
+// and submitting, a rotation can advance currentIndex and another session can
+// add or remove a theme, so the resolved position has to be checked again
+// against the list actually about to be written.
+describe('checkMovePositions re-checks a resolved position against the current list', () => {
+  it('accepts positions that are still in range', () => {
+    expect(checkMovePositions(4, 1, 10).ok).toBe(true);
+  });
+
+  it('refuses a source that is past the end of the list as it now stands', () => {
+    expect(checkMovePositions(8, 1, 5).ok).toBe(false);
+  });
+
+  it('refuses a destination that is past the end of the list as it now stands', () => {
+    expect(checkMovePositions(1, 8, 5).ok).toBe(false);
+  });
+
+  it('refuses the current rotation slot as a source', () => {
+    expect(checkMovePositions(CURRENT_SLOT, 3, 10).ok).toBe(false);
+  });
+
+  it('refuses the current rotation slot as a destination', () => {
+    expect(checkMovePositions(3, CURRENT_SLOT, 10).ok).toBe(false);
+  });
+
+  it('refuses a negative position', () => {
+    expect(checkMovePositions(-1, 3, 10).ok).toBe(false);
+  });
+});
+
+// Defence in depth. splice with an out of range index returns nothing, so the
+// unguarded version inserted undefined and grew the list by one, corrupting it
+// rather than failing.
+describe('applyMove refuses to corrupt the list', () => {
+  it('throws rather than inserting a hole when the source is out of range', () => {
+    expect(() => applyMove(list(5), 0, 9, 1)).toThrow();
+  });
+
+  it('throws rather than inserting a hole when the destination is out of range', () => {
+    expect(() => applyMove(list(5), 0, 1, 9)).toThrow();
+  });
+
+  it('never returns a list with a missing entry', () => {
+    const moved = applyMove(list(5), 0, 4, 1);
+    expect(moved.every((t) => t !== undefined)).toBe(true);
+    expect(moved).toHaveLength(5);
   });
 });

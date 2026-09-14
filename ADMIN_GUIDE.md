@@ -77,6 +77,8 @@ Moving a theme from position 30 to position 3 is one **Move** and one form, the 
 
 **Previous** and **Next** only exist for very long lists that do not fit in one Discord message. They change what you can see, never what you can move: positions are absolute, so you can move a theme that is on another page without going to it first. Around thirty themes still fits on a single page.
 
+**Position 1 cannot be moved into or out of.** It is the current rotation slot, which the rotation sets rather than reordering. Position 2 is the soonest a move can take effect, so that is where to put a theme you want up next. The bot refuses a move touching position 1 and says so rather than appearing to do nothing.
+
 Because each move saves as it happens, there is no cancel-everything button. If you put something in the wrong place, move it back.
 
 > **Note:** The bot keeps track of which theme is currently "up next" — reordering won't accidentally skip or repeat a theme mid-rotation, even if you move the current theme itself.

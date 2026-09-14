@@ -32,6 +32,66 @@ const LINE_BUDGET = 1700;
 export type MoveRequest =
   { ok: true; from: number; to: number } | { ok: false; reason: string };
 
+export type MoveCheck = { ok: true } | { ok: false; reason: string };
+
+/**
+ * Display index of the current rotation slot.
+ *
+ * The list always starts here, and the current theme is followed by name on
+ * save so that reordering never makes the rotation skip. Together those mean
+ * nothing can move into or out of this slot visibly: the view simply
+ * re-rotates and the list comes back unchanged. Before this was guarded, both
+ * directions were silent no-ops reported as successes.
+ *
+ * The rule is shift proof at any layer. Display index 0 is the current slot by
+ * construction, whatever currentIndex happens to be, so a rotation advancing
+ * between reading the list and submitting the form cannot defeat it.
+ */
+export const CURRENT_SLOT = 0;
+
+/**
+ * Deliberately structural rather than descriptive. Saying what the slot
+ * currently holds would only be true just after a rotation and would read as
+ * wrong by the end of the week.
+ */
+const CURRENT_SLOT_REFUSAL =
+  'Position 1 is the current rotation slot. It is set by the rotation, not by ' +
+  'reordering, so nothing can be moved out of it or into it. Position 2 is the ' +
+  'soonest a move can take effect.';
+
+/**
+ * Checks a pair of resolved display positions against the list as it now
+ * stands.
+ *
+ * Separate from parseMove because parseMove only ever sees the list as it was
+ * when the move form was opened. A rotation can advance and another session can
+ * add or remove a theme while the form is open, so this runs again immediately
+ * before the write, when the resolved positions meet the list actually about to
+ * be saved.
+ */
+export function checkMovePositions(
+  from: number,
+  to: number,
+  total: number,
+): MoveCheck {
+  for (const position of [from, to]) {
+    if (!Number.isInteger(position) || position < 0 || position >= total) {
+      return {
+        ok: false,
+        reason:
+          `Position ${position + 1} is not in the list any more. The list has ` +
+          `${total}. Check the numbers and try again.`,
+      };
+    }
+  }
+
+  if (from === CURRENT_SLOT || to === CURRENT_SLOT) {
+    return { ok: false, reason: CURRENT_SLOT_REFUSAL };
+  }
+
+  return { ok: true };
+}
+
 function lineFor(item: IndexedTheme, displayIndex: number): string {
   const name =
     themeNameText(item.theme).slice(0, MAX_THEME_NAME) || '(unnamed)';
@@ -128,6 +188,9 @@ export function parseMove(
     };
   }
 
+  const resolved = checkMovePositions(from - 1, to - 1, total);
+  if (!resolved.ok) return resolved;
+
   return { ok: true, from: from - 1, to: to - 1 };
 }
 
@@ -161,6 +224,13 @@ export function applyMove(
   toDisplay: number,
 ): ThemeEntry[] {
   const total = themes.length;
+
+  // splice with an out of range index removes nothing, so the unguarded version
+  // inserted undefined and returned a list one longer than it started, which is
+  // a corrupted themes.json rather than a failed move.
+  const check = checkMovePositions(fromDisplay, toDisplay, total);
+  if (!check.ok) throw new Error(check.reason);
+
   const view = Array.from(
     { length: total },
     (_, i) => themes[(currentIndex + i) % total],

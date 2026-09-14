@@ -61,7 +61,12 @@ const nameAt = (themes: ThemeEntry[], i: number) =>
  * Drives the handler through a sequence of moves, each given as the two values
  * an admin would type into the move form.
  */
-async function runMoves(themes: ThemeEntry[], moves: [string, string][]) {
+async function runMoves(
+  themes: ThemeEntry[],
+  moves: [string, string][],
+  /** Runs while the move form is open, to simulate the list moving underneath. */
+  beforeSubmit?: () => void,
+) {
   store = themes;
   currentIndex = 0;
 
@@ -90,6 +95,7 @@ async function runMoves(themes: ThemeEntry[], moves: [string, string][]) {
     editReply: vi.fn().mockResolvedValue(response),
     awaitModalSubmit: vi.fn(() => {
       const [from, to] = moves[submits++];
+      beforeSubmit?.();
       return Promise.resolve({
         customId: 'reorderMoveModal-inv-1',
         user: { id: 'user-1' },
@@ -273,5 +279,80 @@ describe('moving a theme to the front of the queue', () => {
   it('still marks the same theme as current in the list', async () => {
     const { renders } = await runMoves(list(30), [['30', '2']]);
     expect(lineAt(renders.at(-1)!, 1)).toContain('Fixture 1');
+  });
+});
+
+// ─── the current rotation slot ────────────────────────────────────────────────
+
+/**
+ * Position 1 is the current rotation slot, and the view is pinned to it, so a
+ * move into or out of it re-rotates back to where it started. Both directions
+ * used to come back with an unchanged list and a notice saying the move
+ * succeeded.
+ */
+describe('a move touching position 1 is refused rather than silently doing nothing', () => {
+  for (const [label, move] of [
+    ['out of position 1', ['1', '5']],
+    ['into position 1', ['5', '1']],
+  ] as [string, [string, string]][]) {
+    it(`refuses a move ${label}`, async () => {
+      const { renders } = await runMoves(list(30), [move]);
+      expect(renders.at(-1)).toMatch(/current rotation slot/i);
+    });
+
+    it(`saves nothing for a move ${label}`, async () => {
+      await runMoves(list(30), [move]);
+      expect(saveThemes).not.toHaveBeenCalled();
+    });
+
+    it(`never claims a move ${label} succeeded`, async () => {
+      const { renders } = await runMoves(list(30), [move]);
+      expect(renders.at(-1)).not.toMatch(/Moved theme/);
+    });
+
+    it(`leaves the order untouched for a move ${label}`, async () => {
+      await runMoves(list(30), [move]);
+      expect(store.map((_, i) => nameAt(store, i))).toEqual(
+        list(30).map((_, i) => `Fixture ${i + 1}`),
+      );
+    });
+  }
+
+  it('still shows the list after refusing', async () => {
+    const { renders } = await runMoves(list(30), [['5', '1']]);
+    expect(renders.at(-1)).toContain('1. ');
+  });
+});
+
+// The form is open for as long as the admin takes to fill it in. A scheduled
+// rotation can advance currentIndex in that window, and another session can
+// add or remove a theme, so positions valid at parse time can be wrong by the
+// time the write happens.
+describe('a position that stopped being valid while the form was open', () => {
+  it('refuses a source that is past the end of the list as it now stands', async () => {
+    const { renders } = await runMoves(list(30), [['28', '4']], () => {
+      store = store.slice(0, 10);
+    });
+
+    expect(renders.at(-1)).toMatch(/not in the list any more/i);
+    expect(saveThemes).not.toHaveBeenCalled();
+  });
+
+  it('does not corrupt the list when the source went out of range', async () => {
+    await runMoves(list(30), [['28', '4']], () => {
+      store = store.slice(0, 10);
+    });
+
+    expect(store).toHaveLength(10);
+    expect(store.every((entry) => entry !== undefined)).toBe(true);
+  });
+
+  it('applies a move that is still in range after the list shrank', async () => {
+    const { renders } = await runMoves(list(30), [['8', '4']], () => {
+      store = store.slice(0, 10);
+    });
+
+    expect(saveThemes).toHaveBeenCalledTimes(1);
+    expect(renders.at(-1)).toContain('Moved theme 8 to position 4');
   });
 });
