@@ -22,6 +22,17 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=build /app/dist ./dist
 
+# The deploy marker, shown in the /theme-bot themes footer. Both values arrive
+# as build args because .dockerignore excludes .git, so the image cannot read
+# them for itself. The date is baked in rather than read from the clock at
+# runtime, which would show today for an image built weeks ago. The defaults are
+# deliberately not version-shaped: an image built without these reports
+# "unknown" rather than something plausible.
+ARG GIT_SHA=unknown
+ARG GIT_DATE=unknown
+ENV DEPLOY_SHA=$GIT_SHA
+ENV DEPLOY_DATE=$GIT_DATE
+
 # The persistent volume mounts here. themes.json, state.json and config.json
 # live on it, not in /app, because /app is rebuilt on every deploy.
 ENV DATA_DIR=/data

@@ -42,10 +42,27 @@ Feature suggestions are welcome! Please:
 
 ### Confirming a Deployment
 
-If you need to confirm that a change actually reached the running bot, bump
-`DEPLOY_MARKER` in `src/version.ts` in the same PR. The value is shown in the
-footer of `/theme-bot themes`, so running that command in Discord tells you
-which build is live. Format is `YYYY-MM-DD.N`.
+If you need to confirm that a change actually reached the running bot, run
+`/theme-bot themes` and read the build value in the footer. It looks like
+`build 2026-09-14 cd0a649`: the commit date and the short git SHA the running
+image was built from. It moves on its own with every deploy, so there is nothing
+to bump and nothing to remember.
+
+The SHA says exactly what is running. The date says how fresh at a glance, and
+is the commit's own date rather than the time the image happened to be built, so
+two people building the same commit get the same footer.
+
+Compare the SHA against the commit you expect:
+
+```bash
+git rev-parse --short=7 origin/main
+```
+
+A footer reading `unknown` means the values never reached the image: the build
+arg was not passed, or the deploy did not go through the pipeline. It reports
+`unknown` rather than guessing, because a marker that can lie is worse than no
+marker. A footer showing the SHA with no date in front of it means the SHA
+arrived and the date did not.
 
 This exists because the bot runs on hosting with no log access and a deploy
 pipeline that is not in this repo. The marker is the only way to see what is
