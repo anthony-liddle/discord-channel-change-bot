@@ -1271,7 +1271,7 @@ appearing in shell history, read it from a file:
 
 ```bash
 pnpm build
-DISCORD_TOKEN="$(cat ~/.config/pnwkc-bot/token)" CLIENT_ID=<production client id> pnpm register
+DISCORD_TOKEN="$(cat ~/.config/theme-bot/token)" CLIENT_ID=<production client id> pnpm register
 ```
 
 Only the `cat` is recorded in history. Global commands can take up to an hour to
