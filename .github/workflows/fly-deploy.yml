@@ -23,9 +23,14 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
-      # GIT_SHA becomes the deploy marker in the /theme-bot themes footer, so
-      # the footer moves on its own every time this runs and nobody has to
-      # remember to bump a constant.
-      - run: flyctl deploy --remote-only --build-arg GIT_SHA=${{ github.sha }}
+      # These become the deploy marker in the /theme-bot themes footer, so it
+      # moves on its own every time this runs and nobody has to remember to bump
+      # a constant. The date is the commit's own date, taken from the same SHA
+      # that is passed beside it, so the two can never disagree.
+      - name: Deploy
+        run: |
+          flyctl deploy --remote-only \
+            --build-arg "GIT_SHA=${{ github.sha }}" \
+            --build-arg "GIT_DATE=$(git show -s --format=%cs ${{ github.sha }})"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

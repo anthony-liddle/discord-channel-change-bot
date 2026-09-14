@@ -17,6 +17,11 @@
  * github.sha, and `pnpm deploy` passes `git rev-parse HEAD` so a manual deploy
  * needs nothing remembered either.
  *
+ * The commit date rides along the same way, because the SHA says exactly what
+ * is running while the date says how fresh at a glance. It is baked in rather
+ * than computed at runtime: `new Date()` inside the container would show today
+ * for an image built weeks ago, which is the marker lying again in a new way.
+ *
  * When any of that fails it reports `unknown`, never a stale or plausible
  * value. That is the whole lesson: a marker that can lie is worse than no
  * marker, because a wrong answer gets acted on and a missing one gets
@@ -57,4 +62,52 @@ export function readDeployMarker(
   }
 }
 
+/** `YYYY-MM-DD`, the shape `git show -s --format=%cs` produces. */
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Rejects a date that matches the shape but is not a real day, so 2026-02-30
+ * reads as unknown rather than as a plausible build date.
+ */
+function isRealCalendarDate(value: string): boolean {
+  const [year, month, day] = value.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
+/** Reads the commit date without ever throwing, for the same reason. */
+export function readDeployDate(raw: unknown = process.env.DEPLOY_DATE): string {
+  try {
+    if (typeof raw !== 'string') return UNKNOWN_MARKER;
+
+    const trimmed = raw.trim();
+    if (!DATE_PATTERN.test(trimmed)) return UNKNOWN_MARKER;
+    if (!isRealCalendarDate(trimmed)) return UNKNOWN_MARKER;
+
+    return trimmed;
+  } catch {
+    return UNKNOWN_MARKER;
+  }
+}
+
+/**
+ * What the footer prints.
+ *
+ * The SHA is the identity and the date is the gloss, so a date without a SHA
+ * still reads as unknown. A bare date there is exactly the shape that misled
+ * three times: it looks like a complete answer while identifying nothing.
+ */
+export function buildDeployLabel(marker: string, date: string): string {
+  if (marker === UNKNOWN_MARKER) return UNKNOWN_MARKER;
+  return date === UNKNOWN_MARKER ? marker : `${date} ${marker}`;
+}
+
 export const DEPLOY_MARKER = readDeployMarker();
+export const DEPLOY_DATE = readDeployDate();
+
+/** Use this in anything user facing. The other two are its inputs. */
+export const DEPLOY_LABEL = buildDeployLabel(DEPLOY_MARKER, DEPLOY_DATE);

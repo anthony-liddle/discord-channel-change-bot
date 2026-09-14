@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { DEPLOY_MARKER, UNKNOWN_MARKER, readDeployMarker } from '../version';
+import {
+  DEPLOY_LABEL,
+  DEPLOY_MARKER,
+  UNKNOWN_MARKER,
+  buildDeployLabel,
+  readDeployDate,
+  readDeployMarker,
+} from '../version';
 
 /**
  * The marker is the only way to see what is actually running, and it has now
@@ -125,5 +132,110 @@ describe('DEPLOY_MARKER', () => {
 
   it('is no longer a hand maintained date, which is what kept misleading us', () => {
     expect(DEPLOY_MARKER).not.toMatch(/^\d{4}-\d{2}-\d{2}\./);
+  });
+});
+
+// ─── the build date ───────────────────────────────────────────────────────────
+
+/**
+ * The SHA says exactly what is running; the date says how fresh at a glance,
+ * which is the one thing the old sortable constant did better.
+ *
+ * It is baked in beside the SHA rather than computed at runtime. Computing it
+ * at runtime would show today's date for an image built weeks ago, which is the
+ * marker lying again in a new way.
+ */
+describe('readDeployDate accepts a real commit date', () => {
+  it('accepts an ISO date', () => {
+    expect(readDeployDate('2026-09-14')).toBe('2026-09-14');
+  });
+
+  it('ignores surrounding whitespace from the build arg', () => {
+    expect(readDeployDate('  2026-09-14  ')).toBe('2026-09-14');
+  });
+
+  it('sorts lexicographically, which is what made the old constant readable', () => {
+    expect(['2026-09-14', '2026-01-01', '2026-12-31'].sort()[0]).toBe(
+      '2026-01-01',
+    );
+  });
+});
+
+describe('readDeployDate says unknown rather than lying', () => {
+  for (const [label, value] of [
+    ['a missing variable', undefined],
+    ['an empty value', ''],
+    ['whitespace only', '   '],
+    ['the Dockerfile default', 'unknown'],
+    ['a dirty tree marker', 'dirty'],
+    ['an unpadded month', '2026-9-14'],
+    ['a month that does not exist', '2026-13-01'],
+    ['a day that does not exist', '2026-02-30'],
+    ['a day-first date', '14-09-2026'],
+    ['a full timestamp', '2026-09-14T12:00:00Z'],
+    ['a SHA in the date slot', 'cd0a649'],
+    ['a year on its own', '2026'],
+  ] as [string, unknown][]) {
+    it(`reports unknown for ${label}`, () => {
+      expect(readDeployDate(value as string)).toBe(UNKNOWN_MARKER);
+    });
+  }
+});
+
+describe('readDeployDate never throws', () => {
+  for (const value of [undefined, null, 42, {}, [], true, Symbol('s')]) {
+    it(`survives ${String(typeof value)} and returns unknown`, () => {
+      expect(() => readDeployDate(value as unknown as string)).not.toThrow();
+      expect(readDeployDate(value as unknown as string)).toBe(UNKNOWN_MARKER);
+    });
+  }
+});
+
+/**
+ * What the footer actually prints.
+ *
+ * The SHA is the identity and the date is the gloss, so a known date without a
+ * known SHA still reads as unknown. A bare date in that footer is precisely the
+ * shape that misled three times, and it would look like a complete answer while
+ * hiding that nothing identifies the build.
+ */
+describe('buildDeployLabel', () => {
+  it('shows the date then the SHA when both arrived', () => {
+    expect(buildDeployLabel('cd0a649', '2026-09-14')).toBe(
+      '2026-09-14 cd0a649',
+    );
+  });
+
+  it('shows the SHA alone when the date did not arrive', () => {
+    expect(buildDeployLabel('cd0a649', UNKNOWN_MARKER)).toBe('cd0a649');
+  });
+
+  it('reports unknown when the SHA did not arrive, even with a date', () => {
+    expect(buildDeployLabel(UNKNOWN_MARKER, '2026-09-14')).toBe(UNKNOWN_MARKER);
+  });
+
+  it('reports unknown when neither arrived', () => {
+    expect(buildDeployLabel(UNKNOWN_MARKER, UNKNOWN_MARKER)).toBe(
+      UNKNOWN_MARKER,
+    );
+  });
+
+  it('never contains a newline, so the footer stays one line', () => {
+    expect(buildDeployLabel('cd0a649', '2026-09-14')).not.toMatch(/\n/);
+  });
+});
+
+describe('DEPLOY_LABEL', () => {
+  it('is a non-empty string, whatever the environment holds', () => {
+    expect(typeof DEPLOY_LABEL).toBe('string');
+    expect(DEPLOY_LABEL.length).toBeGreaterThan(0);
+  });
+
+  it('is a date and SHA, a bare SHA, or unknown, and nothing else', () => {
+    expect(DEPLOY_LABEL).toMatch(
+      new RegExp(
+        `^(\\d{4}-\\d{2}-\\d{2} [0-9a-f]{7}|[0-9a-f]{7}|${UNKNOWN_MARKER})$`,
+      ),
+    );
   });
 });

@@ -1033,9 +1033,9 @@ it goes last.
     [Appendix A](#appendix-a-reading-the-logs).
 
 12. **Merge, deploy, then confirm.** Run `/theme-bot themes` and check the
-    build value in the footer against the commit you merged. It is the short
-    git SHA the image was built from, so it changes by itself. That is the loop
-    that had never closed on this project.
+    build value in the footer against the commit you merged. It reads as the
+    commit date and the short git SHA the image was built from, so it changes
+    by itself. That is the loop that had never closed on this project.
 
 ---
 
@@ -1108,10 +1108,15 @@ malformed file on the volume.
 dependency PRs. Merging one changes `main` and changes nothing in production
 until it is deployed. **If you ignore this, you will eventually believe a fix
 is live when it is not, which is the exact failure that started all of this.**
-The footer of `/theme-bot themes` shows the short git SHA the running image was
-built from, so comparing it with `git log -1 --format=%h origin/main` answers
-"is my change live" without trusting anyone's memory. `unknown` there means the
-SHA never reached the image.
+The footer of `/theme-bot themes` shows the commit date and the short git SHA
+the running image was built from, so comparing it with
+`git rev-parse --short=7 origin/main` answers "is my change live" without
+trusting anyone's memory. `unknown` there means the values never reached the
+image.
+
+Deploy by hand with `pnpm deploy` rather than `flyctl deploy` directly. It
+passes the marker for you, and refuses to claim a commit when the working tree
+is dirty.
 
 **The machine going down.** A Fly volume lives on one physical host, so a host
 failure can mean downtime until it is restored. Fly takes automatic volume

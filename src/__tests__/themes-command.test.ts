@@ -5,7 +5,7 @@ vi.mock('../themes', () => ({ getThemes: vi.fn() }));
 
 import { getThemes } from '../themes';
 import { themes as themesCmd } from '../commands/themes';
-import { DEPLOY_MARKER } from '../version';
+import { DEPLOY_LABEL } from '../version';
 
 // /theme-bot themes is the only way to see what is actually deployed. The bot
 // runs on hosting with no log access and an unverified deploy pipeline, so this
@@ -36,7 +36,7 @@ describe('themes command deploy marker', () => {
 
     await themesCmd(interaction, {} as never);
 
-    expect(replyContent(interaction)).toContain(DEPLOY_MARKER);
+    expect(replyContent(interaction)).toContain(DEPLOY_LABEL);
   });
 
   it('keeps the marker on the same footer line as the theme count', async () => {
@@ -46,7 +46,7 @@ describe('themes command deploy marker', () => {
 
     const footer = replyContent(interaction)
       .split('\n')
-      .find((line) => line.includes(DEPLOY_MARKER));
+      .find((line) => line.includes(DEPLOY_LABEL));
     expect(footer).toContain('2');
   });
 
@@ -80,6 +80,6 @@ describe('themes command deploy marker', () => {
 
     await themesCmd(interaction, {} as never);
 
-    expect(replyContent(interaction)).toContain(DEPLOY_MARKER);
+    expect(replyContent(interaction)).toContain(DEPLOY_LABEL);
   });
 });
