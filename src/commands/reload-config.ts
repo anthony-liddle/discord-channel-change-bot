@@ -6,7 +6,13 @@ import { requireAdmin } from './index';
 import { reloadThemes } from '../themes';
 import { readRuntimeFiles } from '../runtime-files';
 import { auditThemes, formatThemeProblems } from '../theme-validation';
-import type { ThemeEntry } from '../types';
+import {
+  describeAlertProbe,
+  probeAlertChannel,
+  successNoticesEnabled,
+} from '../admin-alerts';
+import { MAX_MESSAGE_LENGTH } from '../interaction-errors';
+import type { Config, ThemeEntry } from '../types';
 
 /**
  * themes.json is hand edited on the volume, and that path calls neither
@@ -58,6 +64,36 @@ async function buildRuntimeFileDump(): Promise<{
   return { summary, files };
 }
 
+/**
+ * Checks the alert path by posting to it, and says what happened.
+ *
+ * config.json is not readable from inside Discord and nothing ever exercised
+ * the alert channel, so whether failures would actually be reported was itself
+ * invisible. That is the same problem the alert channel exists to solve.
+ *
+ * Contained like every other use of the admin channel: a broken alert path must
+ * not break the reload that reports it.
+ */
+async function describeAlertPath(
+  interaction: Parameters<CommandHandler>[0],
+  config: Config | null,
+): Promise<string> {
+  if (!config) return '';
+  try {
+    const probe = await probeAlertChannel(interaction.client, config);
+    return `\n\n${describeAlertProbe(probe, successNoticesEnabled(config))}`;
+  } catch (err) {
+    return `\n\nAlerts: could not be checked (${(err as Error).message}).`;
+  }
+}
+
+/** The reply carries attachments as well, so the text is capped rather than trusted. */
+function capReply(content: string): string {
+  return content.length <= MAX_MESSAGE_LENGTH
+    ? content
+    : `${content.slice(0, MAX_MESSAGE_LENGTH - 1)}\u2026`;
+}
+
 export const reloadConfigCmd: CommandHandler = async (interaction) => {
   if (!(await requireAdmin(interaction))) return;
 
@@ -74,9 +110,11 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
     if (!themes?.length) {
       console.warn('Config reloaded with no themes configured');
       await interaction.reply({
-        content:
+        content: capReply(
           'Warning: Config reloaded but no themes are configured. Rotations will fail.\n' +
-          dump.summary,
+            dump.summary +
+            (await describeAlertPath(interaction, config)),
+        ),
         files: dump.files,
         flags: MessageFlags.Ephemeral,
       });
@@ -98,27 +136,32 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
       );
 
       await interaction.reply({
-        content:
+        content: capReply(
           `Config reloaded! ${themes.length} themes loaded. ` +
-          `Cron rescheduled: ${schedule} (${timezone})\n${dump.summary}` +
-          describeThemeProblems(themes),
+            `Cron rescheduled: ${schedule} (${timezone})\n${dump.summary}` +
+            describeThemeProblems(themes) +
+            (await describeAlertPath(interaction, config)),
+        ),
         files: dump.files,
         flags: MessageFlags.Ephemeral,
       });
     } catch {
       await interaction.reply({
-        content:
+        content: capReply(
           `Config reloaded with ${themes.length} themes, but cron schedule is invalid: ${schedule}\n` +
-          dump.summary +
-          describeThemeProblems(themes),
+            dump.summary +
+            describeThemeProblems(themes) +
+            (await describeAlertPath(interaction, config)),
+        ),
         files: dump.files,
         flags: MessageFlags.Ephemeral,
       });
     }
   } catch (err) {
     await interaction.reply({
-      content:
+      content: capReply(
         `Failed to reload config: ${(err as Error).message}\n` + dump.summary,
+      ),
       files: dump.files,
       flags: MessageFlags.Ephemeral,
     });

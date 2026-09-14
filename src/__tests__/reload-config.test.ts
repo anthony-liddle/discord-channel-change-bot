@@ -9,11 +9,18 @@ vi.mock('../themes', () => ({ reloadThemes: vi.fn() }));
 vi.mock('../scheduler', () => ({ scheduleCronJob: vi.fn() }));
 vi.mock('../rotation', () => ({ rotateTheme: vi.fn() }));
 vi.mock('../runtime-files', () => ({ readRuntimeFiles: vi.fn() }));
+// Only the part that touches Discord is mocked. describeAlertProbe is the
+// wording the admin actually reads, so it runs for real.
+vi.mock('../admin-alerts', async (importActual) => ({
+  ...(await importActual<typeof import('../admin-alerts')>()),
+  probeAlertChannel: vi.fn(),
+}));
 
 import { reloadConfig } from '../config';
 import { reloadThemes } from '../themes';
 import { scheduleCronJob } from '../scheduler';
 import { readRuntimeFiles } from '../runtime-files';
+import { probeAlertChannel } from '../admin-alerts';
 import { reloadConfigCmd } from '../commands/reload-config';
 
 // reload-config is the only way to read themes.json from inside Discord, so it
@@ -50,6 +57,12 @@ beforeEach(() => {
       name: 'state.json',
       path: '/state.json',
       content: '{"currentIndex":0}',
+      error: null,
+    },
+    {
+      name: 'config.json',
+      path: '/config.json',
+      content: '{"channelId":"1"}',
       error: null,
     },
   ]);
@@ -147,7 +160,11 @@ describe('reloadConfigCmd runtime file dump', () => {
 
     await reloadConfigCmd(interaction, {} as never);
 
-    expect(attachedNames(interaction)).toEqual(['themes.json', 'state.json']);
+    expect(attachedNames(interaction)).toEqual([
+      'themes.json',
+      'state.json',
+      'config.json',
+    ]);
   });
 
   it('still attaches themes.json when the theme list loads empty', async () => {
@@ -205,5 +222,78 @@ describe('reloadConfigCmd runtime file dump', () => {
 
     const [payload] = interaction.reply.mock.calls[0];
     expect(payload.content).toContain('ENOENT');
+  });
+});
+
+// The alert channel exists to make failures visible. Whether it works was
+// itself invisible until now: config.json is not readable from Discord and
+// nothing ever checked the path.
+describe('reloadConfigCmd reports the alert path status', () => {
+  const contentOf = (i: { reply: ReturnType<typeof vi.fn> }) =>
+    i.reply.mock.calls[0][0].content as string;
+
+  it('says alerts are off when adminChannelId is not set', async () => {
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'not-configured',
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toContain('adminChannelId');
+  });
+
+  it('confirms a working path', async () => {
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'posted',
+      channelId: '9',
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toMatch(/alerts: working/i);
+  });
+
+  it('warns when the bot cannot post in the admin channel', async () => {
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'cannot-post',
+      channelId: '9',
+      detail: 'Missing Permissions',
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toMatch(/broken/i);
+    expect(contentOf(interaction)).toContain('Missing Permissions');
+  });
+
+  it('checks the path by posting to it rather than reading permissions', async () => {
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'posted',
+      channelId: '9',
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(probeAlertChannel).toHaveBeenCalled();
+  });
+
+  it('keeps the whole reply inside the Discord message cap', async () => {
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'cannot-post',
+      channelId: '9',
+      detail: 'x'.repeat(500),
+    });
+    vi.mocked(reloadThemes).mockResolvedValue(
+      Array.from({ length: 200 }, () => ({ name: '!!!', message: 'm' })),
+    );
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction).length).toBeLessThanOrEqual(2000);
   });
 });

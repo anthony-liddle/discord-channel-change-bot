@@ -3,7 +3,7 @@ import fsp from 'fs/promises';
 import { dataPath } from './paths';
 import type { Config } from './types';
 
-const CONFIG_PATH = dataPath('config.json');
+export const CONFIG_PATH = dataPath('config.json');
 
 let cachedConfig: Config | null = null;
 

@@ -61,7 +61,8 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
      "channelId": "123456789012345678",
      "schedule": "0 9 * * 1",
      "timezone": "America/New_York",
-     "adminChannelId": "123456789012345678"
+     "adminChannelId": "123456789012345678",
+     "adminSuccessNotices": true
    }
    ```
 
@@ -69,6 +70,13 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    there when a scheduled rotation fails, which is otherwise invisible unless
    you can read the host's logs. Leave it out or leave it empty and the bot
    starts and rotates exactly as before.
+
+   `adminSuccessNotices` defaults to `true` and posts one line on every
+   successful rotation as well. That makes silence in the alert channel
+   evidence rather than ambiguity, and re-proves the alert path weekly instead
+   of only when it was last tested. Set it to `false` to keep failure alerts
+   without the weekly line. `/theme-bot reload-config` checks the whole path by
+   posting to it and reports what happened.
 
 4. Create `themes.json` with your initial themes:
 

@@ -1,7 +1,7 @@
 import type { Client } from 'discord.js';
 import type { Config } from './types';
 import { rotateTheme } from './rotation';
-import { reportRotationFailure } from './failure-report';
+import { reportRotationFailure, reportRotationSuccess } from './admin-alerts';
 
 /**
  * The weekly rotation, wrapped so a failure says so somewhere a person will
@@ -21,7 +21,22 @@ export function makeScheduledRotation(
   return async () => {
     const config = readConfig();
     const result = await rotateTheme(client, config);
-    if (result.success) return;
+
+    if (result.success) {
+      // Contained for the same reason the failure path is: posting about a
+      // rotation must never be able to break one.
+      try {
+        await reportRotationSuccess(client, config, {
+          themeName: result.themeName ?? 'unknown theme',
+          channelName: result.channelName ?? 'unknown channel',
+        });
+      } catch (err) {
+        console.error(
+          `Could not post the rotation notice: ${(err as Error).message}`,
+        );
+      }
+      return;
+    }
 
     const detail = result.error ?? 'unknown error';
     console.error(`Scheduled rotation failed: ${detail}`);

@@ -2,5 +2,6 @@
   "channelId": "",
   "schedule": "0 9 * * 1",
   "timezone": "America/Los_Angeles",
-  "adminChannelId": ""
+  "adminChannelId": "",
+  "adminSuccessNotices": true
 }
