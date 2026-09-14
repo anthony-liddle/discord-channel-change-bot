@@ -106,7 +106,7 @@ describe('reloadConfigCmd audits the file it just loaded', () => {
 
     await reloadConfigCmd(interaction, {} as never);
 
-    expect(contentOf(interaction)).toMatch(/same name/i);
+    expect(contentOf(interaction)).toMatch(/same thing as theme/i);
   });
 
   it('still attaches the files when it finds problems', async () => {

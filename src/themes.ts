@@ -1,37 +1,48 @@
 import { ThemeEntry, Themes } from './types';
 import fs from 'fs/promises';
 import { dataPath } from './paths';
-import { validateThemeMessage, validateThemeName } from './theme-validation';
+import {
+  duplicateKey,
+  validateThemeMessage,
+  validateThemeName,
+} from './theme-validation';
 
 export const THEMES_PATH = dataPath('themes.json');
 
 let cachedThemes: ThemeEntry[] | null = null;
 
 /**
- * Compared trimmed and case insensitively because normalizeChannelName
- * lowercases and collapses whitespace, so "Thicc" and " thicc " both rename the
- * channel to the same thing. Two themes that produce the same channel name are
- * duplicates for every purpose the bot has.
+ * Two themes are duplicates when they rename the channel to the same thing.
+ * That was always the stated rule here, but the implementation compared trimmed
+ * and lowercased, which is weaker: it missed repeated inner whitespace, tabs,
+ * and, once accent folding landed, "Cafe Night" beside "Café Night". All three
+ * produce one channel name from two entries.
+ *
+ * duplicateKey is now the single definition, shared with the reload audit, so
+ * a name the modal accepts cannot become a problem reported at the next reload.
  */
-function comparableName(theme: ThemeEntry): string {
-  const raw = typeof theme === 'string' ? theme : theme?.name;
-  return String(raw ?? '')
-    .trim()
-    .toLowerCase();
-}
-
 function assertNameIsFree(
   themes: ThemeEntry[],
   name: string,
   ignoreIndex = -1,
 ): void {
-  const candidate = name.trim().toLowerCase();
-  const clash = themes.findIndex(
-    (theme, i) => i !== ignoreIndex && comparableName(theme) === candidate,
-  );
+  const candidate = duplicateKey(name);
+  // An unusable name is not a duplicate of anything; validateThemeName has
+  // already rejected it on every path that reaches here.
+  if (candidate === null) return;
+
+  const clash = themes.findIndex((theme, i) => {
+    if (i === ignoreIndex) return false;
+    const existing = duplicateKey(
+      typeof theme === 'string' ? theme : theme?.name,
+    );
+    return existing !== null && existing === candidate;
+  });
+
   if (clash !== -1) {
     throw new Error(
-      `A theme named "${name.trim()}" already exists at position ${clash + 1}. ` +
+      `A theme named "${name.trim()}" already exists at position ${clash + 1}, ` +
+        `because both rename the channel to "#${candidate}". ` +
         'Pick a different name, or edit that entry instead.',
     );
   }

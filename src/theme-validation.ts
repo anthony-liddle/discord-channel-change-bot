@@ -12,10 +12,24 @@ import { canBecomeChannelName, normalizeChannelName } from './channel-name';
 /**
  * The widest position prefix a display can put in front of a name. Both a
  * select option label and an autocomplete choice name are built as
- * `${position}. ${name}`, and "999. " is the longest that gets for any list
- * short enough to be worth showing.
+ * `${position}. ${name}`.
+ *
+ * ASSUMPTION: at most 999 themes. That is the one place a theme count is still
+ * baked in, and it is here rather than anywhere else on purpose.
+ *
+ * At 1000 themes the prefix becomes "1000. " and a maximum length name plus
+ * prefix is 101 characters, one over the cap that both a select option label
+ * and an autocomplete choice name enforce. Nothing would throw: themeOptionLabel
+ * slices to 100, so the last character of the name would be dropped from the
+ * display, and two themes whose names differ only in that last character would
+ * become indistinguishable in the pickers.
+ *
+ * If a list ever approaches 1000, widen this to '9999. ' and lower
+ * MAX_THEME_NAME to match. Names already stored stay valid either way, because
+ * lowering the cap only affects new writes.
  */
-export const POSITION_PREFIX_WIDTH = '999. '.length;
+export const MAX_ASSUMED_THEMES = 999;
+export const POSITION_PREFIX_WIDTH = `${MAX_ASSUMED_THEMES}. `.length;
 
 /**
  * A select option label and an autocomplete choice name both cap at 100
@@ -99,11 +113,40 @@ export function channelNameFor(name: string): string {
   return normalizeChannelName(name);
 }
 
+/**
+ * The one rule for deciding whether two themes are the same theme.
+ *
+ * Two entries are duplicates when they rename the channel to the same thing,
+ * which is what themes.ts always claimed the rule was without implementing it.
+ * Comparing trimmed and lowercased missed three real collisions: repeated inner
+ * whitespace, tabs, and, since accent folding landed, "Cafe Night" beside
+ * "Café Night".
+ *
+ * Returns null for a name that cannot produce a channel name at all. Such an
+ * entry has its own problem reported, and must not collide with every other
+ * broken entry and hide a genuine duplicate behind a pile of false ones.
+ */
+export function duplicateKey(name: unknown): string | null {
+  if (typeof name !== 'string') return null;
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return null;
+  try {
+    return normalizeChannelName(trimmed);
+  } catch {
+    return null;
+  }
+}
+
 export interface ThemeProblem {
   /** 1 based, so it matches how the pickers and the file read to a human. */
   position: number;
   name: string;
   problem: string;
+  /**
+   * What sort of problem, so callers and tests can branch on it without
+   * matching on prose that is meant to be rewritten for clarity.
+   */
+  kind: 'duplicate' | 'invalid';
 }
 
 /**
@@ -126,21 +169,31 @@ export function auditThemes(themes: readonly unknown[]): ThemeProblem[] {
 
     try {
       const clean = validateThemeName(rawName);
-      const key = clean.toLowerCase();
-      const firstAt = seenAt.get(key);
-      if (firstAt === undefined) {
+      const key = duplicateKey(clean);
+      const firstAt = key === null ? undefined : seenAt.get(key);
+      if (key === null) {
+        // Unreachable while validateThemeName guarantees normalization, and
+        // harmless if that ever changes: the entry simply is not compared.
+      } else if (firstAt === undefined) {
         seenAt.set(key, position);
       } else {
         problems.push({
           position,
           name,
+          kind: 'duplicate',
           problem:
-            `Same name as theme ${firstAt}. The rotation would use it twice ` +
-            'and the pickers cannot tell the two apart.',
+            `Renames the channel to the same thing as theme ${firstAt} ` +
+            `(\`#${key}\`). The rotation would use it twice and the pickers ` +
+            'cannot tell the two apart.',
         });
       }
     } catch (err) {
-      problems.push({ position, name, problem: (err as Error).message });
+      problems.push({
+        position,
+        name,
+        kind: 'invalid',
+        problem: (err as Error).message,
+      });
     }
 
     const rawMessage = readMessage(entry);
@@ -148,7 +201,12 @@ export function auditThemes(themes: readonly unknown[]): ThemeProblem[] {
       try {
         validateThemeMessage(rawMessage);
       } catch (err) {
-        problems.push({ position, name, problem: (err as Error).message });
+        problems.push({
+          position,
+          name,
+          kind: 'invalid',
+          problem: (err as Error).message,
+        });
       }
     }
   });
