@@ -21,7 +21,11 @@ describe('readRuntimeFiles', () => {
 
     const files = await readRuntimeFiles();
 
-    expect(files.map((f) => f.name)).toEqual(['themes.json', 'state.json']);
+    expect(files.map((f) => f.name)).toEqual([
+      'themes.json',
+      'state.json',
+      'config.json',
+    ]);
   });
 
   it('returns the raw contents of each file unparsed', async () => {
@@ -49,7 +53,7 @@ describe('readRuntimeFiles', () => {
   it('does not reject when every file is unreadable', async () => {
     vi.mocked(fsp.readFile).mockRejectedValue(new Error('EACCES'));
 
-    await expect(readRuntimeFiles()).resolves.toHaveLength(2);
+    await expect(readRuntimeFiles()).resolves.toHaveLength(3);
   });
 
   it('reads one file failing and another succeeding independently', async () => {

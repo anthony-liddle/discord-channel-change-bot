@@ -1122,7 +1122,8 @@ situation you just escaped. Copy it somewhere else on a schedule:
 fly ssh console -C "cat /data/themes.json" > ~/backups/themes-$(date +%F).json
 ```
 
-Once PR #55 ships, `/theme-bot reload-config` attaches both files to its reply,
+`/theme-bot reload-config` attaches `themes.json`, `state.json` and
+`config.json` to its reply,
 so you can also pull a backup from inside Discord with no terminal at all.
 
 **Billing.** A card expiring means Fly suspends the app. The bot stops, the

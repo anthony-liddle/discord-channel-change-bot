@@ -103,6 +103,9 @@ export async function validatePermissions(
 export interface RotationResult {
   success: boolean;
   error?: string;
+  /** What was applied, so a success can be reported without re-deriving it. */
+  themeName?: string;
+  channelName?: string;
 }
 
 function describeDiscordError(err: unknown): string {
@@ -167,7 +170,11 @@ export async function rotateTheme(
     if (channel.name === newName) {
       console.log(`Channel already named "${newName}", skipping rename`);
       await setStateIndex(applyIndex);
-      return { success: true };
+      return {
+        success: true,
+        themeName: getThemeName(theme),
+        channelName: newName,
+      };
     }
 
     await channel.setName(newName, 'Weekly theme rotation');
@@ -187,7 +194,11 @@ export async function rotateTheme(
     await setStateIndex(applyIndex);
     console.log(`State saved. Current theme index: ${applyIndex}`);
 
-    return { success: true };
+    return {
+      success: true,
+      themeName: getThemeName(theme),
+      channelName: newName,
+    };
   } catch (err) {
     const msg = describeDiscordError(err);
     console.error(`ERROR renaming channel #${config.channelId}: ${msg}`);

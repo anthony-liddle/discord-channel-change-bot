@@ -20,6 +20,13 @@ export interface Config {
    * it is meant to fix.
    */
   adminChannelId?: string;
+  /**
+   * Whether to post a line to the admin channel on every successful rotation,
+   * not just on failures. Defaults to on when adminChannelId is set. Separate
+   * from failure reporting on purpose: turning the weekly noise off must never
+   * turn the alerts off with it.
+   */
+  adminSuccessNotices?: boolean;
 }
 
 export interface Themes {
