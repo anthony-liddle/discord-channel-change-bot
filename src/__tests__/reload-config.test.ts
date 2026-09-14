@@ -434,3 +434,111 @@ describe('reloadConfigCmd warns when the alert channel is the theme channel', ()
     expect(contentOf(interaction)).not.toMatch(/warning/i);
   });
 });
+
+/**
+ * When the cap binds, the audit gives way and the alert line survives.
+ *
+ * The alert status and its clash warning are appended last, so a tail
+ * truncation drops exactly them. That is backwards: a batch upload with
+ * problems is the same moment the channel ids are most likely to be wrong, so
+ * the warning matters most precisely when the audit is longest. The audit
+ * already has a bound of its own and its detail is the most expendable thing in
+ * the reply.
+ */
+describe('when the reply is too long, the audit gives way rather than the alert', () => {
+  const contentOf = (i: { reply: ReturnType<typeof vi.fn> }) =>
+    i.reply.mock.calls[0][0].content as string;
+
+  /** Long enough, with 200 broken themes, to push the reply over the cap. */
+  const crowdedReply = () => {
+    vi.mocked(reloadConfig).mockReturnValue({
+      channelId: '5',
+      adminChannelId: '5',
+    });
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'posted',
+      channelId: '5',
+    });
+    vi.mocked(readRuntimeFiles).mockResolvedValue([
+      {
+        name: 'themes.json',
+        path: '/themes.json',
+        content: null,
+        error: 'E'.repeat(600),
+      },
+    ]);
+    vi.mocked(reloadThemes).mockResolvedValue(
+      Array.from({ length: 200 }, (_, n) => ({
+        name: '!!!',
+        message: `m${n}`,
+      })),
+    );
+  };
+
+  it('keeps the alert status line', async () => {
+    crowdedReply();
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toContain('Alerts:');
+  });
+
+  it('keeps the public channel warning, which is the whole point', async () => {
+    crowdedReply();
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toMatch(/WARNING/);
+    expect(contentOf(interaction)).toContain('adminChannelId');
+  });
+
+  it('keeps the reload result at the top', async () => {
+    crowdedReply();
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toMatch(/^Config reloaded/);
+  });
+
+  it('still reports that there are theme problems at all', async () => {
+    crowdedReply();
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toMatch(/problem/i);
+  });
+
+  it('is still inside the cap', async () => {
+    crowdedReply();
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction).length).toBeLessThanOrEqual(2000);
+  });
+
+  it('keeps the alert line even when the reload summary is enormous', async () => {
+    vi.mocked(reloadConfig).mockReturnValue({
+      channelId: '5',
+      adminChannelId: '5',
+      schedule: 'x'.repeat(5000),
+    });
+    vi.mocked(scheduleCronJob).mockImplementation(() => {
+      throw new Error('Invalid cron expression');
+    });
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'posted',
+      channelId: '5',
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toContain('Alerts:');
+    expect(contentOf(interaction).length).toBeLessThanOrEqual(2000);
+  });
+});
