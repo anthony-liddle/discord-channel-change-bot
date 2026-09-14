@@ -71,6 +71,10 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    you can read the host's logs. Leave it out or leave it empty and the bot
    starts and rotates exactly as before.
 
+   Point `adminChannelId` at a private channel, not at the one being renamed.
+   If it matches `channelId`, the alerts and weekly notices go into the public
+   theme channel; `/theme-bot reload-config` warns when it spots that.
+
    `adminSuccessNotices` defaults to `true` and posts one line on every
    successful rotation as well. That makes silence in the alert channel
    evidence rather than ambiguity, and re-proves the alert path weekly instead

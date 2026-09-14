@@ -280,20 +280,157 @@ describe('reloadConfigCmd reports the alert path status', () => {
 
     expect(probeAlertChannel).toHaveBeenCalled();
   });
+});
 
-  it('keeps the whole reply inside the Discord message cap', async () => {
+/**
+ * The reply is assembled from four independently sized pieces: the reload
+ * summary, the runtime file notes, the theme audit and the alert status line.
+ * Three of them read from a hand edited config.json or from exception messages,
+ * so none has a bound of its own. Per section budgets that each hold can still
+ * sum past 2000, which is the same defect formatThemeProblems was fixed for,
+ * one level up.
+ *
+ * config.json is about to be hand edited repeatedly, so these use inputs that
+ * a hand edit can actually produce.
+ */
+describe('the assembled reply has one hard budget', () => {
+  const contentOf = (i: { reply: ReturnType<typeof vi.fn> }) =>
+    i.reply.mock.calls[0][0].content as string;
+
+  beforeEach(() => {
     vi.mocked(probeAlertChannel).mockResolvedValue({
-      status: 'cannot-post',
+      status: 'posted',
       channelId: '9',
-      detail: 'x'.repeat(500),
     });
-    vi.mocked(reloadThemes).mockResolvedValue(
-      Array.from({ length: 200 }, () => ({ name: '!!!', message: 'm' })),
-    );
+  });
+
+  it('caps a reply carrying an absurdly long cron expression', async () => {
+    // The invalid schedule path echoes the raw string straight back.
+    vi.mocked(reloadConfig).mockReturnValue({
+      channelId: '1',
+      schedule: 'x'.repeat(5000),
+    });
+    vi.mocked(scheduleCronJob).mockImplementation(() => {
+      throw new Error('Invalid cron expression');
+    });
     const interaction = adminInteraction();
 
     await reloadConfigCmd(interaction, {} as never);
 
     expect(contentOf(interaction).length).toBeLessThanOrEqual(2000);
+  });
+
+  it('caps a reply carrying a long file read error', async () => {
+    vi.mocked(readRuntimeFiles).mockResolvedValue([
+      {
+        name: 'themes.json',
+        path: '/themes.json',
+        content: null,
+        error: 'E'.repeat(5000),
+      },
+    ]);
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction).length).toBeLessThanOrEqual(2000);
+  });
+
+  it('caps a reply carrying a long config load failure', async () => {
+    vi.mocked(reloadConfig).mockImplementation(() => {
+      throw new Error('C'.repeat(5000));
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction).length).toBeLessThanOrEqual(2000);
+  });
+
+  // Every section at once, each within its own budget, summing past the cap.
+  it('caps a reply where every section is at its worst together', async () => {
+    vi.mocked(reloadConfig).mockReturnValue({
+      channelId: '1',
+      schedule: 'x'.repeat(1500),
+      timezone: 'T'.repeat(500),
+    });
+    vi.mocked(scheduleCronJob).mockImplementation(() => {
+      throw new Error('Invalid cron expression');
+    });
+    vi.mocked(readRuntimeFiles).mockResolvedValue([
+      {
+        name: 'themes.json',
+        path: '/themes.json',
+        content: null,
+        error: 'E'.repeat(800),
+      },
+    ]);
+    vi.mocked(reloadThemes).mockResolvedValue(
+      Array.from({ length: 200 }, () => ({ name: '!!!', message: 'm' })),
+    );
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'cannot-post',
+      channelId: '9',
+      detail: 'D'.repeat(800),
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction).length).toBeLessThanOrEqual(2000);
+  });
+
+  it('still attaches the files when the reply is truncated', async () => {
+    vi.mocked(reloadConfig).mockReturnValue({
+      channelId: '1',
+      schedule: 'x'.repeat(5000),
+    });
+    vi.mocked(scheduleCronJob).mockImplementation(() => {
+      throw new Error('Invalid cron expression');
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(attachedNames(interaction)).toContain('themes.json');
+  });
+});
+
+// config.json holds two channel ids and is about to be hand edited repeatedly.
+describe('reloadConfigCmd warns when the alert channel is the theme channel', () => {
+  const contentOf = (i: { reply: ReturnType<typeof vi.fn> }) =>
+    i.reply.mock.calls[0][0].content as string;
+
+  it('warns when both ids are the same', async () => {
+    vi.mocked(reloadConfig).mockReturnValue({
+      channelId: '5',
+      adminChannelId: '5',
+    });
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'posted',
+      channelId: '5',
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toMatch(/warning/i);
+    expect(contentOf(interaction)).toContain('adminChannelId');
+  });
+
+  it('does not warn when they are different channels', async () => {
+    vi.mocked(reloadConfig).mockReturnValue({
+      channelId: '5',
+      adminChannelId: '9',
+    });
+    vi.mocked(probeAlertChannel).mockResolvedValue({
+      status: 'posted',
+      channelId: '9',
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).not.toMatch(/warning/i);
   });
 });

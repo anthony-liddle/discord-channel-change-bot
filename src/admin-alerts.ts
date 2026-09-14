@@ -114,6 +114,22 @@ export async function reportRotationSuccess(
   logPostFailure('rotation notice', config, outcome);
 }
 
+/**
+ * Whether the alert channel is the very channel the bot renames.
+ *
+ * config.json holds two channel ids and is hand edited. Pointing adminChannelId
+ * at the rotation channel posts the alert test line and every weekly success
+ * notice into the public theme channel. Nothing fails, which is exactly why it
+ * needs saying out loud.
+ */
+export function adminChannelClashesWithRotation(config: Config): boolean {
+  const admin = readChannelId(config);
+  if (!admin) return false;
+  const rotation =
+    typeof config.channelId === 'string' ? config.channelId.trim() : null;
+  return rotation !== null && rotation.length > 0 && rotation === admin;
+}
+
 export type AlertProbe =
   | { status: 'not-configured' }
   | { status: 'posted'; channelId: string }
@@ -147,6 +163,21 @@ export async function probeAlertChannel(
 
 /** One line for the reload-config reply. */
 export function describeAlertProbe(
+  probe: AlertProbe,
+  successNotices: boolean,
+  sameAsRotationChannel = false,
+): string {
+  const clash = sameAsRotationChannel
+    ? '\n\nWARNING: `adminChannelId` is set to the same channel as ' +
+      '`channelId`, so alerts and weekly notices are being posted into the ' +
+      'theme channel where everyone in the server can see them. Point ' +
+      '`adminChannelId` at a private channel.'
+    : '';
+
+  return describeProbeStatus(probe, successNotices) + clash;
+}
+
+function describeProbeStatus(
   probe: AlertProbe,
   successNotices: boolean,
 ): string {

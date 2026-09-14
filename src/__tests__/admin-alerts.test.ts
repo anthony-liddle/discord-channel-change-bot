@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type { Client } from 'discord.js';
 import type { Config } from '../types';
 import {
+  adminChannelClashesWithRotation,
   describeAlertProbe,
   probeAlertChannel,
   reportRotationFailure,
@@ -420,5 +421,81 @@ describe('reportRotationSuccess', () => {
     );
 
     expect(channel.send.mock.calls[0][0].length).toBeLessThanOrEqual(2000);
+  });
+});
+
+// ─── the alert channel pointing at the public channel ─────────────────────────
+
+/**
+ * config.json holds two channel ids and is hand edited. Setting adminChannelId
+ * to the rotation channel makes the bot post its alert test line and every
+ * weekly success notice into the public theme channel, where the whole server
+ * sees them. Nothing would fail, which is what makes it worth saying out loud.
+ */
+describe('adminChannelClashesWithRotation', () => {
+  it('is true when both ids are the same', () => {
+    expect(
+      adminChannelClashesWithRotation({ channelId: '5', adminChannelId: '5' }),
+    ).toBe(true);
+  });
+
+  it('is true when they differ only by whitespace', () => {
+    expect(
+      adminChannelClashesWithRotation({
+        channelId: '5',
+        adminChannelId: ' 5 ',
+      }),
+    ).toBe(true);
+  });
+
+  it('is false when they are different channels', () => {
+    expect(
+      adminChannelClashesWithRotation({ channelId: '5', adminChannelId: '9' }),
+    ).toBe(false);
+  });
+
+  it('is false when no admin channel is set', () => {
+    expect(adminChannelClashesWithRotation({ channelId: '5' })).toBe(false);
+  });
+
+  it('is false when the admin channel is not text', () => {
+    expect(
+      adminChannelClashesWithRotation({
+        channelId: '5',
+        adminChannelId: 5,
+      } as unknown as Config),
+    ).toBe(false);
+  });
+});
+
+describe('describeAlertProbe warns when the alert channel is the theme channel', () => {
+  const posted = { status: 'posted' as const, channelId: '5' };
+
+  it('warns even though the post succeeded', () => {
+    const text = describeAlertProbe(posted, true, true);
+    expect(text).toMatch(/warning/i);
+  });
+
+  it('says the server can see the notices', () => {
+    const text = describeAlertProbe(posted, true, true);
+    expect(text).toMatch(/everyone|public|whole server/i);
+  });
+
+  it('names both config keys so the fix is obvious', () => {
+    const text = describeAlertProbe(posted, true, true);
+    expect(text).toContain('adminChannelId');
+    expect(text).toContain('channelId');
+  });
+
+  it('does not warn when the channels differ', () => {
+    expect(describeAlertProbe(posted, true, false)).not.toMatch(/warning/i);
+  });
+
+  it('still warns when success notices are off, because failures post there too', () => {
+    expect(describeAlertProbe(posted, false, true)).toMatch(/warning/i);
+  });
+
+  it('defaults to not warning when the caller does not say', () => {
+    expect(describeAlertProbe(posted, true)).not.toMatch(/warning/i);
   });
 });

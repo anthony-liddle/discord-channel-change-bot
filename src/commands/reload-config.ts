@@ -7,6 +7,7 @@ import { reloadThemes } from '../themes';
 import { readRuntimeFiles } from '../runtime-files';
 import { auditThemes, formatThemeProblems } from '../theme-validation';
 import {
+  adminChannelClashesWithRotation,
   describeAlertProbe,
   probeAlertChannel,
   successNoticesEnabled,
@@ -81,7 +82,11 @@ async function describeAlertPath(
   if (!config) return '';
   try {
     const probe = await probeAlertChannel(interaction.client, config);
-    return `\n\n${describeAlertProbe(probe, successNoticesEnabled(config))}`;
+    return `\n\n${describeAlertProbe(
+      probe,
+      successNoticesEnabled(config),
+      adminChannelClashesWithRotation(config),
+    )}`;
   } catch (err) {
     return `\n\nAlerts: could not be checked (${(err as Error).message}).`;
   }
