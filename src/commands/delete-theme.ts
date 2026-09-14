@@ -9,7 +9,7 @@ import {
 import { requireAdmin } from './index';
 import { getThemes, deleteTheme } from '../themes';
 import {
-  OVER_LIMIT_MESSAGE,
+  overLimitMessage,
   buildThemeSelectRow,
   isOverSelectLimit,
   resolveThemeIndex,
@@ -31,7 +31,7 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
   }
 
   if (isOverSelectLimit(themes)) {
-    await interaction.editReply({ content: OVER_LIMIT_MESSAGE });
+    await interaction.editReply({ content: overLimitMessage(themes.length) });
     return;
   }
 

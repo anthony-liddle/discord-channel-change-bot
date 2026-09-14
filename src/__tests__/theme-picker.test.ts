@@ -9,7 +9,7 @@ import {
   themeNameText,
   themeMessageText,
   isOverSelectLimit,
-  OVER_LIMIT_MESSAGE,
+  overLimitMessage,
 } from '../commands/theme-picker';
 
 // Every name shape that survives /theme-bot reorder-themes but reaches the raw
@@ -188,13 +188,36 @@ describe('isOverSelectLimit', () => {
   it('is true one past the Discord maximum', () => {
     expect(isOverSelectLimit(list(26))).toBe(true);
   });
+});
 
-  it('has a message that tells the admin the actual limit', () => {
-    expect(OVER_LIMIT_MESSAGE).toContain('25');
+// The message itself was a defect. It told the admin to run reorder-themes to
+// see the full list, and reorder-themes refuses at the same threshold. Then it
+// told them to trim below 26, which at 26 themes no command can do, because
+// delete-theme is one of the two that just refused. Every action it names now
+// has to be one that actually works.
+describe('overLimitMessage', () => {
+  it('tells the admin the actual limit', () => {
+    expect(overLimitMessage(26)).toContain('25');
   });
 
-  it('has a message that points at a command which still works', () => {
-    expect(OVER_LIMIT_MESSAGE).toContain('reorder-themes');
+  it('tells the admin how many themes they actually have', () => {
+    expect(overLimitMessage(26)).toContain('26');
+  });
+
+  it('does not send the admin to reorder-themes, which refuses at the same threshold', () => {
+    expect(overLimitMessage(26)).not.toContain('reorder-themes');
+  });
+
+  it('does not tell the admin to trim the list, which no command can do at 26', () => {
+    expect(overLimitMessage(26)).not.toMatch(/trim/i);
+  });
+
+  it('names reload-config, which still works and hands back themes.json', () => {
+    expect(overLimitMessage(26)).toContain('reload-config');
+  });
+
+  it('fits inside a Discord message even at 200 themes', () => {
+    expect(overLimitMessage(200).length).toBeLessThanOrEqual(2000);
   });
 });
 
