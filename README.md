@@ -60,9 +60,15 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    {
      "channelId": "123456789012345678",
      "schedule": "0 9 * * 1",
-     "timezone": "America/New_York"
+     "timezone": "America/New_York",
+     "adminChannelId": "123456789012345678"
    }
    ```
+
+   `adminChannelId` is optional. Set it to a private channel and the bot posts
+   there when a scheduled rotation fails, which is otherwise invisible unless
+   you can read the host's logs. Leave it out or leave it empty and the bot
+   starts and rotates exactly as before.
 
 4. Create `themes.json` with your initial themes:
 

@@ -8,6 +8,7 @@ vi.mock('../themes', () => ({
 
 import { addTheme } from '../themes';
 import { addThemeCmd } from '../commands/add-theme';
+import { MAX_THEME_MESSAGE, MAX_THEME_NAME } from '../theme-validation';
 
 // Same client-wide collector behaviour as edit-theme. Every live modal
 // collector is offered every submit and decides for itself whether to take it.
@@ -84,20 +85,20 @@ beforeEach(() => {
 });
 
 describe('add-theme modal input limits', () => {
-  it('caps the theme name at 100 characters in the modal itself', async () => {
+  it('caps the theme name in the modal itself', async () => {
     const a = makeInvocation('inv-A');
     void addThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
     await settle();
 
-    expect(modalInputs(a).themeName.max_length).toBe(100);
+    expect(modalInputs(a).themeName.max_length).toBe(MAX_THEME_NAME);
   });
 
-  it('caps the channel message at 2000 characters in the modal itself', async () => {
+  it('caps the channel message in the modal itself', async () => {
     const a = makeInvocation('inv-A');
     void addThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
     await settle();
 
-    expect(modalInputs(a).channelMessage.max_length).toBe(2000);
+    expect(modalInputs(a).channelMessage.max_length).toBe(MAX_THEME_MESSAGE);
   });
 });
 

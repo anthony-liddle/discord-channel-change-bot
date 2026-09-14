@@ -10,12 +10,25 @@ import { canBecomeChannelName, normalizeChannelName } from './channel-name';
  */
 
 /**
- * A theme name is at most as long as the channel name it becomes. Normalization
- * never lengthens a string, so a name within this cap always produces a channel
- * name within Discord's own 1 to 100 limit, and it also keeps every picker
- * label inside the 100 character cap that breaks reorder-themes today.
+ * The widest position prefix a display can put in front of a name. Both a
+ * select option label and an autocomplete choice name are built as
+ * `${position}. ${name}`, and "999. " is the longest that gets for any list
+ * short enough to be worth showing.
  */
-export const MAX_THEME_NAME = 100;
+export const POSITION_PREFIX_WIDTH = '999. '.length;
+
+/**
+ * A select option label and an autocomplete choice name both cap at 100
+ * characters, and both carry the position prefix so that two themes sharing a
+ * name stay apart. That prefix is what made the August duplicate repairable, so
+ * the cap is set here at the write rather than truncating at the display: a
+ * name that fits is always shown whole, at any position up to 999.
+ *
+ * Normalization never lengthens a string, so this also keeps every channel name
+ * inside Discord's own 1 to 100 limit. The longest live theme name is 30
+ * characters.
+ */
+export const MAX_THEME_NAME = 100 - POSITION_PREFIX_WIDTH;
 
 /**
  * Discord rejects message content over 2000 characters. rotateTheme catches and
@@ -40,8 +53,8 @@ export function validateThemeName(name: unknown): string {
   if (trimmed.length > MAX_THEME_NAME) {
     throw new Error(
       `Theme name is ${trimmed.length} characters. It can be at most ` +
-        `${MAX_THEME_NAME} characters, because that is the longest a Discord ` +
-        'channel name can be.',
+        `${MAX_THEME_NAME} characters, which leaves room for the position ` +
+        'number the menus put in front of it.',
     );
   }
 
@@ -84,6 +97,121 @@ export function validateThemeMessage(message: unknown): string {
  */
 export function channelNameFor(name: string): string {
   return normalizeChannelName(name);
+}
+
+export interface ThemeProblem {
+  /** 1 based, so it matches how the pickers and the file read to a human. */
+  position: number;
+  name: string;
+  problem: string;
+}
+
+/**
+ * Checks a whole loaded list without throwing, so reload-config can report
+ * everything wrong with themes.json at once.
+ *
+ * This is the only validation that sees a hand edit. addTheme and updateTheme
+ * guard the modal paths, but themes.json is edited directly on the volume and
+ * that reaches neither of them. Catching a bad entry here means catching it
+ * when it is pasted in rather than on the Monday the rotation reaches it.
+ */
+export function auditThemes(themes: readonly unknown[]): ThemeProblem[] {
+  const problems: ThemeProblem[] = [];
+  const seenAt = new Map<string, number>();
+
+  themes.forEach((entry, i) => {
+    const position = i + 1;
+    const rawName = readName(entry);
+    const name = displayName(rawName);
+
+    try {
+      const clean = validateThemeName(rawName);
+      const key = clean.toLowerCase();
+      const firstAt = seenAt.get(key);
+      if (firstAt === undefined) {
+        seenAt.set(key, position);
+      } else {
+        problems.push({
+          position,
+          name,
+          problem:
+            `Same name as theme ${firstAt}. The rotation would use it twice ` +
+            'and the pickers cannot tell the two apart.',
+        });
+      }
+    } catch (err) {
+      problems.push({ position, name, problem: (err as Error).message });
+    }
+
+    const rawMessage = readMessage(entry);
+    if (rawMessage !== undefined) {
+      try {
+        validateThemeMessage(rawMessage);
+      } catch (err) {
+        problems.push({ position, name, problem: (err as Error).message });
+      }
+    }
+  });
+
+  return problems;
+}
+
+/**
+ * How many problems fit in a reply that also carries the reload summary and
+ * the file attachments. Five is enough to act on, and the whole file is
+ * attached to the same reply anyway.
+ */
+const MAX_REPORTED_PROBLEMS = 5;
+
+/** Budget for the problem list inside the 2000 character message cap. */
+const PROBLEM_REPORT_BUDGET = 1200;
+
+export function formatThemeProblems(problems: readonly ThemeProblem[]): string {
+  if (problems.length === 0) return '';
+
+  const shown = problems.slice(0, MAX_REPORTED_PROBLEMS);
+  const lines = shown.map(
+    (p) => `- **${p.position}. ${trimForReply(p.name)}**: ${p.problem}`,
+  );
+
+  const remaining = problems.length - shown.length;
+  if (remaining > 0) {
+    lines.push(`- ...and ${remaining} more. The attached file has them all.`);
+  }
+
+  const report =
+    `Found ${problems.length} problem${problems.length === 1 ? '' : 's'} ` +
+    'in the theme list:\n' +
+    lines.join('\n');
+
+  // A guarantee rather than an estimate. Problem text comes from validation
+  // messages that can grow, and this reply cannot be the thing that breaks the
+  // reply.
+  return report.length <= PROBLEM_REPORT_BUDGET
+    ? report
+    : `${report.slice(0, PROBLEM_REPORT_BUDGET - 1)}…`;
+}
+
+function readName(entry: unknown): unknown {
+  if (entry === null || entry === undefined) return undefined;
+  if (typeof entry === 'object') return (entry as { name?: unknown }).name;
+  return entry;
+}
+
+function readMessage(entry: unknown): unknown {
+  if (entry === null || entry === undefined) return undefined;
+  if (typeof entry !== 'object') return undefined;
+  return (entry as { message?: unknown }).message;
+}
+
+function displayName(rawName: unknown): string {
+  if (rawName === null || rawName === undefined) return '(no name)';
+  const text = String(rawName).trim();
+  return text.length === 0 ? '(no name)' : text;
+}
+
+function trimForReply(text: string): string {
+  return text.length <= 40 ? text : `${text.slice(0, 39)}…`;
 }
 
 function describeType(value: unknown): string {

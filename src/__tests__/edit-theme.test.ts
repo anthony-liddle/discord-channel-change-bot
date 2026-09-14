@@ -11,6 +11,7 @@ vi.mock('../themes', () => ({
 
 import { getThemes, updateTheme } from '../themes';
 import { editThemeCmd } from '../commands/edit-theme';
+import { MAX_THEME_MESSAGE, MAX_THEME_NAME } from '../theme-validation';
 
 // awaitModalSubmit builds an InteractionCollector with no message, channel or
 // guild, so it listens client-wide and filters only on interaction type plus
@@ -141,7 +142,7 @@ describe('edit-theme prefill survives a malformed stored entry', () => {
 });
 
 describe('edit-theme modal input limits', () => {
-  it('caps the theme name at 100 characters in the modal itself', async () => {
+  it('caps the theme name in the modal itself', async () => {
     const a = makeInvocation('inv-A');
     void editThemeCmd(
       a.interaction as unknown as ChatInputCommandInteraction,
@@ -149,10 +150,10 @@ describe('edit-theme modal input limits', () => {
     );
     await settle();
 
-    expect(modalInputs(a.select).themeName.max_length).toBe(100);
+    expect(modalInputs(a.select).themeName.max_length).toBe(MAX_THEME_NAME);
   });
 
-  it('caps the channel message at 2000 characters in the modal itself', async () => {
+  it('caps the channel message in the modal itself', async () => {
     const a = makeInvocation('inv-A');
     void editThemeCmd(
       a.interaction as unknown as ChatInputCommandInteraction,
@@ -160,7 +161,9 @@ describe('edit-theme modal input limits', () => {
     );
     await settle();
 
-    expect(modalInputs(a.select).channelMessage.max_length).toBe(2000);
+    expect(modalInputs(a.select).channelMessage.max_length).toBe(
+      MAX_THEME_MESSAGE,
+    );
   });
 });
 

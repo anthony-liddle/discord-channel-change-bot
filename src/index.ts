@@ -3,7 +3,8 @@ import 'dotenv/config';
 import { getConfig, loadConfig } from './config';
 import { loadState } from './state';
 import { scheduleCronJob, stopScheduledTask } from './scheduler';
-import { rotateTheme, validatePermissions, getThemeName } from './rotation';
+import { validatePermissions, getThemeName } from './rotation';
+import { makeScheduledRotation } from './scheduled-rotation';
 import { getCommandHandler, resolveCommandKey } from './commands';
 import { loadThemes } from './themes';
 import { formatHandlerError, reportHandlerError } from './interaction-errors';
@@ -37,14 +38,11 @@ client.once('clientReady', async () => {
   const timezone = config.timezone ?? 'America/New_York';
 
   try {
-    scheduleCronJob(schedule, timezone, async () => {
-      const result = await rotateTheme(client, getConfig());
-      if (!result.success) {
-        console.error(
-          `Scheduled rotation failed: ${result.error ?? 'unknown error'}`,
-        );
-      }
-    });
+    scheduleCronJob(
+      schedule,
+      timezone,
+      makeScheduledRotation(client, getConfig),
+    );
   } catch {
     console.error(`ERROR: Invalid cron schedule: ${schedule}`);
     process.exit(1);

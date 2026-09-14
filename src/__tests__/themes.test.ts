@@ -16,6 +16,7 @@ import {
   reorderTheme,
   reloadThemes,
 } from '../themes';
+import { MAX_THEME_MESSAGE, MAX_THEME_NAME } from '../theme-validation';
 
 const baseThemes = [
   { name: 'Monochrome', message: 'Black and white only!' },
@@ -272,16 +273,16 @@ describe('addTheme validates before writing', () => {
     expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
   });
 
-  it('rejects a name over 100 characters', async () => {
-    await expect(addTheme('a'.repeat(101), 'msg')).rejects.toThrow(
-      /100 characters/,
-    );
+  it(`rejects a name over ${MAX_THEME_NAME} characters`, async () => {
+    await expect(
+      addTheme('a'.repeat(MAX_THEME_NAME + 1), 'msg'),
+    ).rejects.toThrow(new RegExp(`${MAX_THEME_NAME} characters`));
   });
 
-  it('rejects a message over 2000 characters', async () => {
-    await expect(addTheme('Golden Hour', 'a'.repeat(2001))).rejects.toThrow(
-      /2000 characters/,
-    );
+  it(`rejects a message over ${MAX_THEME_MESSAGE} characters`, async () => {
+    await expect(
+      addTheme('Golden Hour', 'a'.repeat(MAX_THEME_MESSAGE + 1)),
+    ).rejects.toThrow(new RegExp(`${MAX_THEME_MESSAGE} characters`));
   });
 
   it('stores the name with surrounding whitespace removed', async () => {
@@ -310,16 +311,16 @@ describe('updateTheme validates before writing', () => {
     expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
   });
 
-  it('rejects a name over 100 characters', async () => {
-    await expect(updateTheme(1, 'a'.repeat(101), 'msg')).rejects.toThrow(
-      /100 characters/,
-    );
+  it(`rejects a name over ${MAX_THEME_NAME} characters`, async () => {
+    await expect(
+      updateTheme(1, 'a'.repeat(MAX_THEME_NAME + 1), 'msg'),
+    ).rejects.toThrow(new RegExp(`${MAX_THEME_NAME} characters`));
   });
 
-  it('rejects a message over 2000 characters', async () => {
+  it(`rejects a message over ${MAX_THEME_MESSAGE} characters`, async () => {
     await expect(
-      updateTheme(1, 'Golden Hour', 'a'.repeat(2001)),
-    ).rejects.toThrow(/2000 characters/);
+      updateTheme(1, 'Golden Hour', 'a'.repeat(MAX_THEME_MESSAGE + 1)),
+    ).rejects.toThrow(new RegExp(`${MAX_THEME_MESSAGE} characters`));
   });
 
   // Validation has to run before the range check is not the point; the point is

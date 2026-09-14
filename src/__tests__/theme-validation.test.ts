@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { normalizeChannelName } from '../channel-name';
+import { themeOptionLabel } from '../commands/theme-picker';
 import {
   MAX_THEME_MESSAGE,
   MAX_THEME_NAME,
@@ -67,15 +68,48 @@ describe('validateThemeName length', () => {
 
   it(`rejects a name of ${MAX_THEME_NAME + 1} characters`, () => {
     expect(() => validateThemeName('a'.repeat(MAX_THEME_NAME + 1))).toThrow(
-      /100 characters/,
+      new RegExp(`${MAX_THEME_NAME} characters`),
     );
   });
 
-  // 96 characters is where reorder-themes currently throws, before the
-  // interaction is acknowledged. The cap has to sit at or below the point where
-  // any picker label would overflow.
+  // 96 characters is where reorder-themes throws today, before the interaction
+  // is ever acknowledged.
   it('rejects the 120 character name that breaks reorder-themes today', () => {
-    expect(() => validateThemeName('x'.repeat(120))).toThrow(/100 characters/);
+    expect(() => validateThemeName('x'.repeat(120))).toThrow(
+      new RegExp(`${MAX_THEME_NAME} characters`),
+    );
+  });
+});
+
+// ─── the cap leaves room for the position prefix ──────────────────────────────
+
+// A select option label and an autocomplete choice name both cap at 100, and
+// both carry a "N. " prefix so that two themes sharing a name stay apart. If a
+// name could fill the whole 100 the prefix would force truncation, which is
+// exactly the disambiguation the August repair depended on. The cap is set at
+// the write so the display never has to truncate.
+describe('the name cap leaves room for a three digit position prefix', () => {
+  const WIDEST_PREFIX = '999. ';
+
+  it('fits a maximum length name plus the widest prefix inside 100 characters', () => {
+    expect(WIDEST_PREFIX.length + MAX_THEME_NAME).toBeLessThanOrEqual(100);
+  });
+
+  it('labels a maximum length name at position 999 without truncating it', () => {
+    const name = 'a'.repeat(MAX_THEME_NAME);
+    const label = themeOptionLabel({ name, message: 'm' }, 998);
+
+    expect(label).toBe(`999. ${name}`);
+    expect(label.length).toBeLessThanOrEqual(100);
+  });
+
+  it('keeps the whole name visible at every position up to 999', () => {
+    const name = 'a'.repeat(MAX_THEME_NAME);
+    for (const index of [0, 8, 9, 98, 99, 998]) {
+      const label = themeOptionLabel({ name, message: 'm' }, index);
+      expect(label.endsWith(name)).toBe(true);
+      expect(label.length).toBeLessThanOrEqual(100);
+    }
   });
 });
 
