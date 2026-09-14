@@ -66,9 +66,79 @@ function makeModalSubmit(customId: string, name: string, message: string) {
   };
 }
 
+// The modal payload the bot actually sends. Discord enforces max_length in the
+// client, so a cap set here stops an oversized value being submitted at all,
+// which beats rejecting one the admin never sees fail.
+function modalInputs(i: { showModal: ReturnType<typeof vi.fn> }) {
+  const json = i.showModal.mock.calls[0][0].toJSON();
+  const inputs: Record<string, { max_length?: number }> = {};
+  for (const label of json.components) {
+    inputs[label.component.custom_id] = label.component;
+  }
+  return inputs;
+}
+
 beforeEach(() => {
   collectors = [];
   vi.mocked(addTheme).mockResolvedValue(undefined);
+});
+
+describe('add-theme modal input limits', () => {
+  it('caps the theme name at 100 characters in the modal itself', async () => {
+    const a = makeInvocation('inv-A');
+    void addThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
+    await settle();
+
+    expect(modalInputs(a).themeName.max_length).toBe(100);
+  });
+
+  it('caps the channel message at 2000 characters in the modal itself', async () => {
+    const a = makeInvocation('inv-A');
+    void addThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
+    await settle();
+
+    expect(modalInputs(a).channelMessage.max_length).toBe(2000);
+  });
+});
+
+// Normalization is invisible today, so an admin only discovers what their theme
+// did to the channel name a week later when the rotation reaches it.
+describe('add-theme echoes the resulting channel name', () => {
+  it('shows the channel name the theme will produce', async () => {
+    const a = makeInvocation('inv-A');
+    void addThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
+    await settle();
+
+    const submit = makeModalSubmit(
+      modalCustomIdFrom(a),
+      'Weekly Theme Toys',
+      'msg',
+    );
+    submitModal(submit);
+    await settle();
+
+    expect(submit.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('weekly-theme-toys'),
+      }),
+    );
+  });
+
+  it('shows the folded channel name for an accented theme name', async () => {
+    const a = makeInvocation('inv-A');
+    void addThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
+    await settle();
+
+    const submit = makeModalSubmit(modalCustomIdFrom(a), 'Café Night', 'msg');
+    submitModal(submit);
+    await settle();
+
+    expect(submit.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('cafe-night'),
+      }),
+    );
+  });
 });
 
 describe('add-theme modal scoping', () => {

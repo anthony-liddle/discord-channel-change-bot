@@ -7,10 +7,15 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from 'discord.js';
-import { getThemeName } from '../rotation';
 import { requireAdmin } from './index';
 import { addTheme } from '../themes';
 import { formatHandlerError } from '../interaction-errors';
+import {
+  MAX_THEME_MESSAGE,
+  MAX_THEME_NAME,
+  channelNameFor,
+  validateThemeName,
+} from '../theme-validation';
 
 export const addThemeCmd: CommandHandler = async (interaction) => {
   if (!(await requireAdmin(interaction))) return;
@@ -23,10 +28,14 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
 
   const modal = new ModalBuilder().setCustomId(modalId).setTitle('New Theme');
 
+  // Discord enforces max_length in the client, so an oversized value cannot be
+  // submitted at all. That beats rejecting one after the fact, and it means
+  // nobody has to know what Discord's default is when the field is omitted.
   const themeNameInput = new TextInputBuilder()
     .setCustomId('themeName')
     .setStyle(TextInputStyle.Short)
     .setPlaceholder('e.g. "Monochrome"')
+    .setMaxLength(MAX_THEME_NAME)
     .setRequired(true);
 
   const themeNameLabel = new LabelBuilder()
@@ -40,6 +49,7 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
     .setCustomId('channelMessage')
     .setStyle(TextInputStyle.Paragraph)
     .setPlaceholder('Post your black and white photos or whatever!')
+    .setMaxLength(MAX_THEME_MESSAGE)
     .setRequired(true);
 
   const channelMessageLabel = new LabelBuilder()
@@ -73,9 +83,14 @@ export const addThemeCmd: CommandHandler = async (interaction) => {
   const message = modalInteraction.fields.getTextInputValue('channelMessage');
 
   try {
-    await addTheme(name, message);
+    // Validated here as well as in the store so the echo below shows exactly
+    // the name that was stored, and so both paths fail with the same wording.
+    const storedName = validateThemeName(name);
+    await addTheme(storedName, message);
     await modalInteraction.reply({
-      content: `Theme Added! New theme: \`${getThemeName(name)}\``,
+      content:
+        `Theme added: **${storedName}**\n` +
+        `When it comes up, the channel will be renamed to \`#${channelNameFor(storedName)}\`.`,
     });
   } catch (err) {
     // Pointing at the logs is useless when nobody on the admin team can read

@@ -19,6 +19,12 @@ import {
   themeNameText,
   themeOptionLabel,
 } from './theme-picker';
+import {
+  MAX_THEME_MESSAGE,
+  MAX_THEME_NAME,
+  channelNameFor,
+  validateThemeName,
+} from '../theme-validation';
 
 export const editThemeCmd: CommandHandler = async (interaction) => {
   if (!(await requireAdmin(interaction))) return;
@@ -89,10 +95,13 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
 
   const modal = new ModalBuilder().setCustomId(modalId).setTitle('Edit Theme');
 
+  // Discord enforces max_length in the client, so an oversized value cannot be
+  // submitted at all.
   const nameInput = new TextInputBuilder()
     .setCustomId('themeName')
     .setStyle(TextInputStyle.Short)
-    .setValue(currentName)
+    .setValue(currentName.slice(0, MAX_THEME_NAME))
+    .setMaxLength(MAX_THEME_NAME)
     .setRequired(true);
 
   const nameLabel = new LabelBuilder()
@@ -103,7 +112,8 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
   const messageInput = new TextInputBuilder()
     .setCustomId('channelMessage')
     .setStyle(TextInputStyle.Paragraph)
-    .setValue(currentMessage)
+    .setValue(currentMessage.slice(0, MAX_THEME_MESSAGE))
+    .setMaxLength(MAX_THEME_MESSAGE)
     .setRequired(true);
 
   const messageLabel = new LabelBuilder()
@@ -147,9 +157,14 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
     modalInteraction.fields.getTextInputValue('channelMessage');
 
   try {
-    await updateTheme(index, newName, newMessage);
+    // Validated here as well as in the store so the echo below shows exactly
+    // the name that was stored, and so both paths fail with the same wording.
+    const storedName = validateThemeName(newName);
+    await updateTheme(index, storedName, newMessage);
     await modalInteraction.reply({
-      content: `Theme updated. **${currentLabel}** is now **${newName}**.`,
+      content:
+        `Theme updated. **${currentLabel}** is now **${storedName}**.\n` +
+        `When it comes up, the channel will be renamed to \`#${channelNameFor(storedName)}\`.`,
       flags: MessageFlags.Ephemeral,
     });
   } catch (err) {
