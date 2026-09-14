@@ -11,24 +11,25 @@ import {
   validateThemeName,
 } from '../theme-validation';
 
-// The fourteen names actually on the Fly volume as of 2026-09-01. Any change to
-// normalization has to leave every one of these renaming the channel exactly as
-// it does today, or a deploy silently renames a live channel.
-const LIVE_THEME_NAMES = [
-  'Weekly theme animal style',
-  'Weekly theme nipples',
-  'Weekly theme senses',
-  'Weekly theme silly and playful',
-  'Weekly theme food play',
-  'Weekly theme bondage',
-  'Weekly theme wet and messy',
-  'Weekly theme impact play',
-  'Weekly theme toys',
-  'Weekly theme sensory play',
-  'Weekly theme aesthetic',
-  'Weekly theme wet and wild',
-  'Weekly theme thicc and thirsty',
-  'Weekly theme butt stuff',
+// A rotation-shaped list: plain ASCII, mixed lengths, the sort of names a
+// server actually uses. Any change to normalization has to leave every one of
+// these renaming the channel exactly as it does today, or a deploy silently
+// renames a live channel.
+const ROTATION_NAMES = [
+  'Weekly theme puzzle night',
+  'Weekly theme origami',
+  'Weekly theme poetry',
+  'Weekly theme silent cinema era',
+  'Weekly theme film noir',
+  'Weekly theme pottery',
+  'Weekly theme paper folding',
+  'Weekly theme chess night',
+  'Weekly theme jazz',
+  'Weekly theme tabletop rpg',
+  'Weekly theme landscape',
+  'Weekly theme macro lenses',
+  'Weekly theme board games night',
+  'Weekly theme dark rooms',
 ];
 
 // ─── the rotation wedge ───────────────────────────────────────────────────────
@@ -153,8 +154,8 @@ describe('validateThemeName rejects values a hand-edited file can produce', () =
 
 describe('validateThemeName trims', () => {
   it('returns the name without surrounding whitespace', () => {
-    expect(validateThemeName('  Weekly theme toys  ')).toBe(
-      'Weekly theme toys',
+    expect(validateThemeName('  Weekly theme jazz  ')).toBe(
+      'Weekly theme jazz',
     );
   });
 });
@@ -181,7 +182,7 @@ describe('normalizeChannelName folds accents instead of deleting them', () => {
 
 // The whole point of folding rather than permitting: no live channel name moves.
 describe('normalizeChannelName leaves every live theme name unchanged', () => {
-  for (const name of LIVE_THEME_NAMES) {
+  for (const name of ROTATION_NAMES) {
     it(`renames "${name}" the same way it does today`, () => {
       const expected = name
         .toLowerCase()
@@ -200,7 +201,7 @@ describe('normalizeChannelName leaves every live theme name unchanged', () => {
 // cannot throw at the point of display.
 describe('the channel name shown back to the admin', () => {
   it('shows what the channel will actually be called', () => {
-    expect(normalizeChannelName('Weekly Theme Toys')).toBe('weekly-theme-toys');
+    expect(normalizeChannelName('Weekly Theme Jazz')).toBe('weekly-theme-jazz');
   });
 
   it('shows the folded form of an accented name', () => {

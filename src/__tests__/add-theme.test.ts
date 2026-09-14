@@ -112,7 +112,7 @@ describe('add-theme echoes the resulting channel name', () => {
 
     const submit = makeModalSubmit(
       modalCustomIdFrom(a),
-      'Weekly Theme Toys',
+      'Weekly Theme Jazz',
       'msg',
     );
     submitModal(submit);
@@ -120,7 +120,7 @@ describe('add-theme echoes the resulting channel name', () => {
 
     expect(submit.reply).toHaveBeenCalledWith(
       expect.objectContaining({
-        content: expect.stringContaining('weekly-theme-toys'),
+        content: expect.stringContaining('weekly-theme-jazz'),
       }),
     );
   });
@@ -172,13 +172,13 @@ describe('add-theme modal scoping', () => {
     await settle();
 
     const taken = submitModal(
-      makeModalSubmit(modalCustomIdFrom(b), 'Thicc and Thirsty', 'msg'),
+      makeModalSubmit(modalCustomIdFrom(b), 'Film Noir Night', 'msg'),
     );
     await settle();
 
     expect(taken).toBe(1);
     expect(addTheme).toHaveBeenCalledTimes(1);
-    expect(addTheme).toHaveBeenCalledWith('Thicc and Thirsty', 'msg');
+    expect(addTheme).toHaveBeenCalledWith('Film Noir Night', 'msg');
   });
 
   it('rejects a modal submitted by a different user', async () => {

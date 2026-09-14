@@ -18,7 +18,7 @@ const ok = (name: string) => ({ name, message: 'A message.' });
 
 describe('auditThemes on a clean list', () => {
   it('reports nothing for a list of valid themes', () => {
-    expect(auditThemes([ok('Weekly theme toys'), ok('Café Night')])).toEqual(
+    expect(auditThemes([ok('Weekly theme jazz'), ok('Café Night')])).toEqual(
       [],
     );
   });
@@ -28,11 +28,11 @@ describe('auditThemes on a clean list', () => {
   });
 
   it('accepts a legacy string entry with no message', () => {
-    expect(auditThemes(['Weekly theme toys'] as ThemeEntry[])).toEqual([]);
+    expect(auditThemes(['Weekly theme jazz'] as ThemeEntry[])).toEqual([]);
   });
 
   it('accepts an entry with no message at all', () => {
-    expect(auditThemes([{ name: 'Weekly theme toys' }])).toEqual([]);
+    expect(auditThemes([{ name: 'Weekly theme jazz' }])).toEqual([]);
   });
 });
 
@@ -110,8 +110,8 @@ describe('auditThemes finds the shapes a hand edit produces', () => {
 describe('auditThemes finds duplicates', () => {
   it('reports the second of two identical names', () => {
     const problems = auditThemes([
-      ok('Thicc and Thirsty'),
-      ok('Thicc and Thirsty'),
+      ok('Film Noir Night'),
+      ok('Film Noir Night'),
     ]);
     expect(problems).toHaveLength(1);
     expect(problems[0].position).toBe(2);
@@ -119,8 +119,8 @@ describe('auditThemes finds duplicates', () => {
 
   it('points at the position it collides with', () => {
     const problems = auditThemes([
-      ok('Thicc and Thirsty'),
-      ok('Thicc and Thirsty'),
+      ok('Film Noir Night'),
+      ok('Film Noir Night'),
     ]);
     expect(problems[0].problem).toMatch(/1/);
   });
@@ -134,7 +134,7 @@ describe('auditThemes finds duplicates', () => {
   });
 
   it('does not report a clean list as duplicated', () => {
-    expect(auditThemes([ok('Toys'), ok('Senses'), ok('Bondage')])).toEqual([]);
+    expect(auditThemes([ok('Jazz'), ok('Poetry'), ok('Pottery')])).toEqual([]);
   });
 });
 

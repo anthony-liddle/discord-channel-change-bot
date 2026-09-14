@@ -112,8 +112,8 @@ describe('reloadConfigCmd audits the file it just loaded', () => {
 
   it('reports a duplicate name, which is what broke edit-theme in August', async () => {
     vi.mocked(reloadThemes).mockResolvedValue([
-      { name: 'Thicc and Thirsty', message: 'a' },
-      { name: 'Thicc and Thirsty', message: 'b' },
+      { name: 'Film Noir Night', message: 'a' },
+      { name: 'Film Noir Night', message: 'b' },
     ]);
     const interaction = adminInteraction();
 
