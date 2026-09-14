@@ -6,6 +6,7 @@ import { scheduleCronJob, stopScheduledTask } from './scheduler';
 import { validatePermissions, getThemeName } from './rotation';
 import { makeScheduledRotation } from './scheduled-rotation';
 import { getCommandHandler, resolveCommandKey } from './commands';
+import { handleThemeAutocomplete } from './commands/theme-autocomplete';
 import { loadThemes } from './themes';
 import { formatHandlerError, reportHandlerError } from './interaction-errors';
 
@@ -58,6 +59,14 @@ client.once('clientReady', async () => {
 });
 
 client.on('interactionCreate', async (interaction) => {
+  // Autocomplete arrives here too and used to be dropped by the guard below.
+  // It has its own 3 second window, cannot be deferred, and cannot show an
+  // error, so the handler swallows its own failures rather than reporting them.
+  if (interaction.isAutocomplete()) {
+    await handleThemeAutocomplete(interaction);
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const key = resolveCommandKey(interaction);

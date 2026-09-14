@@ -1,10 +1,9 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type { ChatInputCommandInteraction } from 'discord.js';
+import type { ThemeEntry } from '../types';
 
 vi.mock('../themes', () => ({
   getThemes: vi.fn(),
-  updateTheme: vi.fn(),
-  deleteTheme: vi.fn(),
   saveThemes: vi.fn(),
   THEMES_PATH: '/tmp/test-themes.json',
 }));
@@ -16,38 +15,38 @@ vi.mock('../state', () => ({
 }));
 
 import { getThemes } from '../themes';
-import { editThemeCmd } from '../commands/edit-theme';
-import { deleteThemeCmd } from '../commands/delete-theme';
 import { reorderThemesCmd } from '../commands/reorder-themes';
-import { MAX_SELECT_OPTIONS } from '../commands/theme-picker';
-import { MAX_THEME_MESSAGE } from '../theme-validation';
+import { MAX_THEME_NAME } from '../theme-validation';
 
 /**
  * The 2026-09-14 ceiling report had to work out what happens at 26 themes by
  * reading every guard by hand, because nothing tested it. These name the
  * command and the count so the next person reads a test name instead.
  *
- * 24 is under the cap, 25 is exactly the cap, 26 is the first count that
- * refuses, and 200 is the far side of any plausible growth.
+ * edit-theme, delete-theme and autocomplete live in
+ * theme-option-handlers.test.ts, where they stopped having an opinion about the
+ * theme count at all. This file is reorder, which still shows the whole list
+ * and so had the harder problem.
+ *
+ * Neutral fixture names throughout.
  */
+
 const COUNTS = [24, 25, 26, 200];
 
-function themeList(n: number) {
-  return Array.from({ length: n }, (_, i) => ({
-    name: `Weekly theme ${i + 1}`,
+const list = (n: number, nameLength = 20): ThemeEntry[] =>
+  Array.from({ length: n }, (_, i) => ({
+    name: `Fixture ${i + 1}`.padEnd(nameLength, 'x').slice(0, nameLength),
     message: `Message ${i + 1}`,
   }));
-}
 
 const settle = async () => {
   for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r));
 };
 
-// Never resolves, so the handler parks at its collector after the guard has
-// either fired or not. What matters is what it said before it got there.
+// Never resolves, so the handler parks at its collector after the first render.
 const pending = () => new Promise(() => {});
 
-function makeDeferred() {
+function makeInteraction() {
   const response = { awaitMessageComponent: vi.fn(pending) };
   return {
     id: 'inv-1',
@@ -62,123 +61,74 @@ function makeDeferred() {
   };
 }
 
-const textOf = (mock: ReturnType<typeof vi.fn>) =>
-  mock.mock.calls.map((c) => (c[0] as { content?: string })?.content ?? '');
+const shown = (i: ReturnType<typeof makeInteraction>) =>
+  i.editReply.mock.calls
+    .map((c) => (c[0] as { content?: string })?.content ?? '')
+    .join('\n');
 
-const refused = (texts: string[]) =>
-  texts.some((t) => t.includes('A Discord menu can only offer'));
-
-const showedAPicker = (mock: ReturnType<typeof vi.fn>) =>
-  mock.mock.calls.some(
-    (c) => ((c[0] as { components?: unknown[] })?.components ?? []).length > 0,
+async function runReorder(themes: ThemeEntry[]) {
+  vi.mocked(getThemes).mockResolvedValue(themes);
+  const i = makeInteraction();
+  void reorderThemesCmd(
+    i as unknown as ChatInputCommandInteraction,
+    {} as never,
   );
+  await settle();
+  return i;
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('edit-theme at each theme count', () => {
+describe('reorder-themes at each theme count', () => {
   for (const count of COUNTS) {
-    const over = count > MAX_SELECT_OPTIONS;
+    it(`reorder-themes at ${count} themes shows the list instead of refusing`, async () => {
+      const i = await runReorder(list(count));
 
-    it(`edit-theme at ${count} themes ${over ? 'refuses with the over limit message' : 'shows the picker'}`, async () => {
-      vi.mocked(getThemes).mockResolvedValue(themeList(count));
-      const i = makeDeferred();
-
-      void editThemeCmd(
-        i as unknown as ChatInputCommandInteraction,
-        {} as never,
-      );
-      await settle();
-
-      expect(refused(textOf(i.editReply))).toBe(over);
-      expect(showedAPicker(i.editReply)).toBe(!over);
+      expect(shown(i)).toContain('Theme order');
+      expect(shown(i)).not.toMatch(/menu can only offer/i);
     });
 
-    it(`edit-theme at ${count} themes acknowledges before building any component`, async () => {
-      vi.mocked(getThemes).mockResolvedValue(themeList(count));
-      const i = makeDeferred();
-
-      void editThemeCmd(
-        i as unknown as ChatInputCommandInteraction,
-        {} as never,
-      );
-      await settle();
+    it(`reorder-themes at ${count} themes acknowledges before building any component`, async () => {
+      const i = await runReorder(list(count));
 
       expect(i.deferReply).toHaveBeenCalled();
     });
-  }
-});
 
-describe('delete-theme at each theme count', () => {
-  for (const count of COUNTS) {
-    const over = count > MAX_SELECT_OPTIONS;
+    it(`reorder-themes at ${count} themes keeps every message inside the 2000 character cap`, async () => {
+      const i = await runReorder(list(count, MAX_THEME_NAME));
 
-    it(`delete-theme at ${count} themes ${over ? 'refuses with the over limit message' : 'shows the picker'}`, async () => {
-      vi.mocked(getThemes).mockResolvedValue(themeList(count));
-      const i = makeDeferred();
-
-      void deleteThemeCmd(
-        i as unknown as ChatInputCommandInteraction,
-        {} as never,
-      );
-      await settle();
-
-      expect(refused(textOf(i.editReply))).toBe(over);
-      expect(showedAPicker(i.editReply)).toBe(!over);
-    });
-  }
-});
-
-describe('reorder-themes at each theme count', () => {
-  for (const count of COUNTS) {
-    const over = count > MAX_SELECT_OPTIONS;
-
-    it(`reorder-themes at ${count} themes ${over ? 'refuses with the over limit message' : 'shows the numbered list'}`, async () => {
-      vi.mocked(getThemes).mockResolvedValue(themeList(count));
-      const i = makeDeferred();
-
-      void reorderThemesCmd(
-        i as unknown as ChatInputCommandInteraction,
-        {} as never,
-      );
-      await settle();
-
-      expect(refused(textOf(i.reply))).toBe(over);
+      for (const call of i.editReply.mock.calls) {
+        const content = (call[0] as { content?: string })?.content ?? '';
+        expect(content.length).toBeLessThanOrEqual(2000);
+      }
     });
 
-    if (count <= 25) {
-      it(`reorder-themes at ${count} themes keeps its list inside the ${MAX_THEME_MESSAGE} character message cap`, async () => {
-        vi.mocked(getThemes).mockResolvedValue(themeList(count));
-        const i = makeDeferred();
+    it(`reorder-themes at ${count} themes offers a move control rather than one step buttons`, async () => {
+      const i = await runReorder(list(count));
 
-        void reorderThemesCmd(
-          i as unknown as ChatInputCommandInteraction,
-          {} as never,
-        );
-        await settle();
-
-        for (const text of textOf(i.reply)) {
-          expect(text.length).toBeLessThanOrEqual(MAX_THEME_MESSAGE);
+      const row = (
+        i.editReply.mock.calls[0][0] as {
+          components?: { toJSON(): { components: { label?: string }[] } }[];
         }
-      });
-    }
+      ).components?.[0];
+      const labels = row?.toJSON().components.map((c) => c.label) ?? [];
+
+      expect(labels).toContain('Move');
+      expect(labels).not.toContain('↑ Move Up');
+    });
   }
 });
 
-// The refusal is only honest if it names something that works. At 26 themes
-// delete-theme has just refused, so "delete a theme" is not an available
-// action and the message must not suggest one.
-describe('the over limit message names only working actions', () => {
-  it('edit-theme at 26 themes does not point at another command that also refuses', async () => {
-    vi.mocked(getThemes).mockResolvedValue(themeList(26));
-    const i = makeDeferred();
+describe('reorder-themes still handles the degenerate lists', () => {
+  it('says there is nothing to reorder when the list is empty', async () => {
+    const i = await runReorder([]);
+    expect(shown(i)).toMatch(/no themes/i);
+  });
 
-    void editThemeCmd(i as unknown as ChatInputCommandInteraction, {} as never);
-    await settle();
-
-    const said = textOf(i.editReply).join('\n');
-    expect(said).not.toContain('reorder-themes');
-    expect(said).toContain('reload-config');
+  it('says there is nothing to reorder with a single theme', async () => {
+    const i = await runReorder(list(1));
+    expect(shown(i)).toMatch(/only one theme/i);
   });
 });

@@ -3,8 +3,10 @@ import { describe, it, expect } from 'vitest';
 import { normalizeChannelName } from '../channel-name';
 import { themeOptionLabel } from '../commands/theme-picker';
 import {
+  MAX_ASSUMED_THEMES,
   MAX_THEME_MESSAGE,
   MAX_THEME_NAME,
+  POSITION_PREFIX_WIDTH,
   validateThemeMessage,
   validateThemeName,
 } from '../theme-validation';
@@ -203,5 +205,41 @@ describe('the channel name shown back to the admin', () => {
 
   it('shows the folded form of an accented name', () => {
     expect(normalizeChannelName('Café Night')).toBe('cafe-night');
+  });
+});
+
+// ─── the 999 assumption ───────────────────────────────────────────────────────
+
+// Stage 2's premise is that the theme count stops mattering. This is the one
+// place a count is still baked in, so it is pinned rather than left to a
+// comment nobody re-derives.
+describe('the documented 999 theme assumption', () => {
+  it('derives the prefix width from the assumed maximum rather than a literal', () => {
+    expect(POSITION_PREFIX_WIDTH).toBe(`${MAX_ASSUMED_THEMES}. `.length);
+  });
+
+  it('leaves a maximum length name exactly filling the 100 character cap', () => {
+    expect(POSITION_PREFIX_WIDTH + MAX_THEME_NAME).toBe(100);
+  });
+
+  it('shows a maximum length name whole at the assumed maximum position', () => {
+    const name = 'a'.repeat(MAX_THEME_NAME);
+    const label = themeOptionLabel(
+      { name, message: 'm' },
+      MAX_ASSUMED_THEMES - 1,
+    );
+
+    expect(label).toBe(`${MAX_ASSUMED_THEMES}. ${name}`);
+    expect(label.length).toBe(100);
+  });
+
+  // Documents the consequence the comment describes, so that if anyone ever
+  // does exceed it they find this rather than a silently clipped name.
+  it('would truncate one character past the assumed maximum', () => {
+    const name = 'a'.repeat(MAX_THEME_NAME);
+    const label = themeOptionLabel({ name, message: 'm' }, MAX_ASSUMED_THEMES);
+
+    expect(label.length).toBe(100);
+    expect(label.endsWith(name)).toBe(false);
   });
 });

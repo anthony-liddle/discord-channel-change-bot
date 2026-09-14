@@ -41,11 +41,32 @@ const commands = [
           'Add a theme using "Channel Name", and "Theme Message"',
         ),
     )
+    // The theme option is the whole reason this file needs re-running. It is
+    // answered by autocomplete, which filters bot side before responding, so
+    // the 25 option ceiling of a select menu stops applying to the theme list.
     .addSubcommand((sub) =>
-      sub.setName('delete-theme').setDescription('Delete a theme (Admin only)'),
+      sub
+        .setName('delete-theme')
+        .setDescription('Delete a theme (Admin only)')
+        .addStringOption((option) =>
+          option
+            .setName('theme')
+            .setDescription('Start typing a theme name or its position number')
+            .setRequired(true)
+            .setAutocomplete(true),
+        ),
     )
     .addSubcommand((sub) =>
-      sub.setName('edit-theme').setDescription('Edit a theme (Admin only)'),
+      sub
+        .setName('edit-theme')
+        .setDescription('Edit a theme (Admin only)')
+        .addStringOption((option) =>
+          option
+            .setName('theme')
+            .setDescription('Start typing a theme name or its position number')
+            .setRequired(true)
+            .setAutocomplete(true),
+        ),
     )
     .addSubcommand((sub) =>
       sub

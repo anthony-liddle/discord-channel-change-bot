@@ -37,13 +37,13 @@ After you submit, the bot tells you exactly what the channel will be renamed to,
 
 The new theme is added to the end of the rotation queue.
 
-**Names the bot will refuse:** a name that has no letters or numbers left after the rules above, such as one made only of emoji or only of punctuation. There would be nothing to rename the channel to, and the rotation would stop on that theme every week. Give it at least one letter or number. A name already used by another theme is refused too, because the two would be impossible to tell apart in the menus.
+**Names the bot will refuse:** a name that has no letters or numbers left after the rules above, such as one made only of emoji or only of punctuation. There would be nothing to rename the channel to, and the rotation would stop on that theme every week. Give it at least one letter or number. A name already used by another theme is refused too. That comparison is by the channel name the theme would produce, so "Cafe Night" and "Café Night" count as the same theme, and so do two names that differ only in capitals or spacing.
 
 ---
 
 ### `/theme-bot edit-theme`
 
-Opens a dropdown to select an existing theme, then shows a form pre-filled with its current values. You can update:
+Start typing after `theme:` and the bot suggests matching themes. You can type part of a name, or just the position number shown in `/theme-bot reorder-themes`. Pick a suggestion and a form opens, pre-filled with that theme's current values. You can update:
 
 - **Theme Name** — Changing this renames the theme in the rotation. The same rules and limits as `add-theme` apply (lowercased, spaces → hyphens, accents dropped, up to 95 characters).
 - **Channel Message** — The message posted when this theme becomes active. Up to 2000 characters.
@@ -52,28 +52,36 @@ As with `add-theme`, the bot shows you the channel name your edit will produce.
 
 Changes take effect in the next rotation that uses this theme.
 
+> **Pick a suggestion rather than typing a name and pressing enter.** The bot refuses anything that is not one of its own suggestions, and it also refuses if the theme list changed while you were typing. Both cases say so and change nothing, so you can just run the command again.
+
 ---
 
 ### `/theme-bot delete-theme`
 
-Opens a dropdown to select a theme to delete. You'll then be asked to confirm before anything is removed — this cannot be undone. The remaining themes stay in their current order.
+Works the same way as `edit-theme`: start typing after `theme:` and pick one of the suggestions. You'll then be asked to confirm before anything is removed — this cannot be undone. The remaining themes stay in their current order.
 
 ---
 
 ### `/theme-bot reorder-themes`
 
-Opens the current theme list and lets you drag themes up and down to reorder the rotation. Use this if a theme ended up in the wrong position without having to delete and re-add anything.
+Shows the numbered theme list and lets you move any theme to any position.
 
 **How it works:**
 
-1. A numbered list of all themes is shown with a dropdown — select the theme you want to move.
-2. The list re-renders with your selected theme highlighted and four buttons: **↑ Move Up**, **↓ Move Down**, **✓ Save**, **✕ Cancel**.
-3. Click ↑ or ↓ as many times as needed — the list updates live so you can see exactly where the theme lands.
-4. Click **✓ Save** to write the new order. The list reappears so you can immediately reposition another theme if needed.
-5. Click **✕ Cancel** to discard moves for the current selection and return to the dropdown.
-6. When you're done moving things around, click **✓ Done** to close.
+1. The list appears with four buttons: **Previous**, **Next**, **Move** and **Done**.
+2. Click **Move**. A short form asks which position to move and where to put it. Both numbers come from the list in front of you.
+3. Submit, and the list redraws with the theme in its new place. The move is saved straight away.
+4. Repeat as often as you like, then click **Done**.
 
-> **Note:** The bot keeps track of which theme is currently "up next" — reordering won't accidentally skip or repeat a theme mid-rotation.
+Moving a theme from position 30 to position 3 is one **Move** and one form, the same as moving it one place. The distance does not matter and neither does how long the list is.
+
+**Previous** and **Next** only exist for very long lists that do not fit in one Discord message. They change what you can see, never what you can move: positions are absolute, so you can move a theme that is on another page without going to it first. Around thirty themes still fits on a single page.
+
+**Position 1 cannot be moved into or out of.** It is the current rotation slot, which the rotation sets rather than reordering. Position 2 is the soonest a move can take effect, so that is where to put a theme you want up next. The bot refuses a move touching position 1 and says so rather than appearing to do nothing.
+
+Because each move saves as it happens, there is no cancel-everything button. If you put something in the wrong place, move it back.
+
+> **Note:** The bot keeps track of which theme is currently "up next" — reordering won't accidentally skip or repeat a theme mid-rotation, even if you move the current theme itself.
 
 ---
 
@@ -114,5 +122,5 @@ The current schedule is pre-selected so you can see what's configured. The chang
 - **Theme order** — themes rotate in the order they appear in the list. Use `/theme-bot themes` to see what's coming up, and `/theme-bot reorder-themes` to change the order.
 - **The bot needs the right permissions** — if it ever stops renaming the channel, check that it still has `Manage Channels` and `Send Messages` permissions in that channel.
 - **Discord rate limits channel renames** to 2 per 10 minutes. The weekly schedule respects this, but avoid using `/theme-bot rotate-now` in quick succession.
-- **Theme name and message limits** are 95 characters for a name and 2000 for a message. The forms stop you going over rather than failing afterwards. The name limit leaves room for the position number the menus show in front of each theme.
+- **Theme name and message limits** are 95 characters for a name and 2000 for a message. The forms stop you going over rather than failing afterwards. The name limit leaves room for the position number shown in front of each theme, both in the autocomplete suggestions and in the `reorder-themes` list.
 - **If a scheduled rotation fails**, the bot posts about it in the admin channel, if the bot owner has configured one. A failed rotation does not skip the theme: the channel keeps its old name and the same theme is tried again on the next run, so nothing is lost from the queue.

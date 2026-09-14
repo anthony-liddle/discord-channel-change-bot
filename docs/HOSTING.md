@@ -1245,8 +1245,28 @@ what it does before you do.
 pnpm build && pnpm register
 ```
 
-It reads `DISCORD_TOKEN` and `CLIENT_ID` from `.env`, builds the command
-definitions in `register-commands.ts`, and sends them to Discord.
+It reads `DISCORD_TOKEN` and `CLIENT_ID` from the environment, builds the
+command definitions in `register-commands.ts`, and sends them to Discord.
+
+`.env` is a fallback, not the only source. `dotenv` does not overwrite a
+variable that is already set, and it falls back one variable at a time, so an
+inline value wins while anything you leave out still comes from `.env`. That
+matters because `.env` holds the throwaway test application's credentials and
+should stay that way: pointing it at production is what caused the
+2026-09-01 incident where a local process and the Fly machine both answered the
+same interaction.
+
+To register against production without touching `.env`, and without the token
+appearing in shell history, read it from a file:
+
+```bash
+pnpm build
+DISCORD_TOKEN="$(cat ~/.config/pnwkc-bot/token)" CLIENT_ID=<production client id> pnpm register
+```
+
+Only the `cat` is recorded in history. Global commands can take up to an hour to
+propagate, so a command that has not changed shape yet is expected rather than a
+failure.
 
 **It is a full replace, not a merge.** The call is an HTTP `PUT` to the
 application's global commands. Discord replaces the entire command list with

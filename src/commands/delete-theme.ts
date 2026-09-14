@@ -8,13 +8,8 @@ import {
 } from 'discord.js';
 import { requireAdmin } from './index';
 import { getThemes, deleteTheme } from '../themes';
-import {
-  overLimitMessage,
-  buildThemeSelectRow,
-  isOverSelectLimit,
-  resolveThemeIndex,
-  themeOptionLabel,
-} from './theme-picker';
+import { themeOptionLabel } from './theme-picker';
+import { THEME_OPTION, resolveThemeSelection } from './theme-autocomplete';
 
 export const deleteThemeCmd: CommandHandler = async (interaction) => {
   if (!(await requireAdmin(interaction))) return;
@@ -30,66 +25,38 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
     return;
   }
 
-  if (isOverSelectLimit(themes)) {
-    await interaction.editReply({ content: overLimitMessage(themes.length) });
+  // The theme arrives as a command option answered by autocomplete, so there is
+  // no select menu and therefore no 25 option ceiling. The value carries a
+  // fingerprint as well as a position, so a list that moved while the admin was
+  // typing is refused rather than deleting a different theme than the one that
+  // was chosen.
+  const selection = resolveThemeSelection(
+    interaction.options.getString(THEME_OPTION, true),
+    themes,
+  );
+  if (!selection.ok) {
+    await interaction.editReply({ content: selection.reason });
     return;
   }
 
-  const selectRow = buildThemeSelectRow(
-    `deleteThemeSelect-${interaction.user.id}`,
-    'Select a theme to delete',
-    themes,
+  const index = selection.index;
+  const themeLabel = themeOptionLabel(themes[index], index);
+
+  const confirmId = `deleteThemeConfirm-${interaction.id}`;
+  const cancelId = `deleteThemeCancel-${interaction.id}`;
+
+  const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(confirmId)
+      .setLabel('Delete')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId(cancelId)
+      .setLabel('Cancel')
+      .setStyle(ButtonStyle.Secondary),
   );
 
   const response = await interaction.editReply({
-    content: 'Which theme would you like to delete?',
-    components: [selectRow],
-  });
-
-  let selectInteraction;
-  try {
-    selectInteraction = await response.awaitMessageComponent({
-      componentType: ComponentType.StringSelect,
-      filter: (i) =>
-        i.customId === `deleteThemeSelect-${interaction.user.id}` &&
-        i.user.id === interaction.user.id,
-      time: 5 * 60 * 1000,
-    });
-  } catch {
-    await interaction.editReply({ content: 'Timed out.', components: [] });
-    return;
-  }
-
-  // Position, not name. Deleting one of two identically named themes has to
-  // remove the one that was actually picked.
-  const index = resolveThemeIndex(selectInteraction.values[0], themes);
-  if (index === -1) {
-    await selectInteraction.update({
-      content:
-        'That theme is no longer at the position it was selected from. Run the command again.',
-      components: [],
-    });
-    return;
-  }
-
-  const themeLabel = themeOptionLabel(themes[index], index);
-
-  const confirmBtn = new ButtonBuilder()
-    .setCustomId(`deleteThemeConfirm-${interaction.user.id}`)
-    .setLabel('Delete')
-    .setStyle(ButtonStyle.Danger);
-
-  const cancelBtn = new ButtonBuilder()
-    .setCustomId(`deleteThemeCancel-${interaction.user.id}`)
-    .setLabel('Cancel')
-    .setStyle(ButtonStyle.Secondary);
-
-  const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    confirmBtn,
-    cancelBtn,
-  );
-
-  await selectInteraction.update({
     content: `Are you sure you want to delete **${themeLabel}**? This cannot be undone.`,
     components: [buttonRow],
   });
@@ -99,8 +66,7 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
     buttonInteraction = await response.awaitMessageComponent({
       componentType: ComponentType.Button,
       filter: (i) =>
-        (i.customId === `deleteThemeConfirm-${interaction.user.id}` ||
-          i.customId === `deleteThemeCancel-${interaction.user.id}`) &&
+        (i.customId === confirmId || i.customId === cancelId) &&
         i.user.id === interaction.user.id,
       time: 5 * 60 * 1000,
     });
@@ -109,9 +75,7 @@ export const deleteThemeCmd: CommandHandler = async (interaction) => {
     return;
   }
 
-  if (
-    buttonInteraction.customId === `deleteThemeCancel-${interaction.user.id}`
-  ) {
+  if (buttonInteraction.customId === cancelId) {
     await buttonInteraction.update({ content: 'Cancelled.', components: [] });
     return;
   }

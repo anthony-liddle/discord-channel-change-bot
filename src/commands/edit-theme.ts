@@ -1,6 +1,5 @@
 import type { CommandHandler } from '../types';
 import {
-  ComponentType,
   LabelBuilder,
   MessageFlags,
   ModalBuilder,
@@ -11,14 +10,11 @@ import {
 import { requireAdmin } from './index';
 import { getThemes, updateTheme } from '../themes';
 import {
-  overLimitMessage,
-  buildThemeSelectRow,
-  isOverSelectLimit,
-  resolveThemeIndex,
   themeMessageText,
   themeNameText,
   themeOptionLabel,
 } from './theme-picker';
+import { THEME_OPTION, resolveThemeSelection } from './theme-autocomplete';
 import {
   MAX_THEME_MESSAGE,
   MAX_THEME_NAME,
@@ -29,74 +25,48 @@ import {
 export const editThemeCmd: CommandHandler = async (interaction) => {
   if (!(await requireAdmin(interaction))) return;
 
-  // Acknowledge before building any component. Builder validation throws
-  // synchronously, and anything thrown before the acknowledgement shows up in
-  // Discord as "The application did not respond" with no way to see why.
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   const themes = await getThemes();
   if (themes.length === 0) {
-    await interaction.editReply({ content: 'No themes to edit.' });
+    await interaction.reply({
+      content: 'No themes to edit.',
+      flags: MessageFlags.Ephemeral,
+    });
     return;
   }
 
-  if (isOverSelectLimit(themes)) {
-    await interaction.editReply({ content: overLimitMessage(themes.length) });
-    return;
-  }
-
-  // Scoped to this invocation, not to the user. awaitModalSubmit builds a
-  // client-wide collector filtered only by customId, so a customId shared
-  // across invocations lets an abandoned run capture a later run's submit and
-  // write to the index IT resolved. interaction.id is unique per invocation.
-  const selectId = `editThemeSelect-${interaction.id}`;
-  const modalId = `editThemeModal-${interaction.id}`;
-
-  const selectRow = buildThemeSelectRow(
-    selectId,
-    'Select a theme to edit',
+  // The theme arrives as a command option answered by autocomplete, so there is
+  // no select menu and therefore no 25 option ceiling. The value carries a
+  // fingerprint as well as a position, so a list that moved while the admin was
+  // typing is refused rather than silently resolving to a different theme.
+  const selection = resolveThemeSelection(
+    interaction.options.getString(THEME_OPTION, true),
     themes,
   );
-
-  const response = await interaction.editReply({
-    content: 'Which theme would you like to edit?',
-    components: [selectRow],
-  });
-
-  let selectInteraction;
-  try {
-    selectInteraction = await response.awaitMessageComponent({
-      componentType: ComponentType.StringSelect,
-      filter: (i) =>
-        i.customId === selectId && i.user.id === interaction.user.id,
-      time: 5 * 60 * 1000,
-    });
-  } catch {
-    await interaction.editReply({ content: 'Timed out.', components: [] });
-    return;
-  }
-
-  // The option value is the array position, so two themes sharing a name stay
-  // distinct and editing entry 7 always means entry 7.
-  const index = resolveThemeIndex(selectInteraction.values[0], themes);
-  if (index === -1) {
-    await selectInteraction.update({
-      content:
-        'That theme is no longer at the position it was selected from. Run the command again.',
-      components: [],
+  if (!selection.ok) {
+    await interaction.reply({
+      content: selection.reason,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
+  const index = selection.index;
   const theme = themes[index];
   const currentLabel = themeOptionLabel(theme, index);
   const currentName = themeNameText(theme);
   const currentMessage = themeMessageText(theme);
 
+  // Scoped to this invocation, not to the user. awaitModalSubmit builds a
+  // client-wide collector filtered only by customId, so a customId shared
+  // across invocations lets an abandoned run capture a later run's submit and
+  // write to the index IT resolved. interaction.id is unique per invocation.
+  const modalId = `editThemeModal-${interaction.id}`;
+
   const modal = new ModalBuilder().setCustomId(modalId).setTitle('Edit Theme');
 
   // Discord enforces max_length in the client, so an oversized value cannot be
-  // submitted at all.
+  // submitted at all. The prefill is sliced to the same cap because a value
+  // longer than max_length is rejected outright.
   const nameInput = new TextInputBuilder()
     .setCustomId('themeName')
     .setStyle(TextInputStyle.Short)
@@ -123,17 +93,7 @@ export const editThemeCmd: CommandHandler = async (interaction) => {
 
   modal.addLabelComponents([nameLabel, messageLabel]);
 
-  await selectInteraction.showModal(modal);
-
-  // The select is still on screen and still clickable, but its collector is
-  // spent. Clear it, or a second click returns Discord's bare "didn't respond
-  // in time" with no explanation.
-  await interaction.editReply({
-    content:
-      `Editing **${currentLabel}**. Submit the form to save your changes.\n` +
-      'To edit a different theme, run `/theme-bot edit-theme` again.',
-    components: [],
-  });
+  await interaction.showModal(modal);
 
   const filter = (i: ModalSubmitInteraction) =>
     i.customId === modalId && i.user.id === interaction.user.id;
