@@ -16,6 +16,7 @@ import {
   reorderTheme,
   reloadThemes,
 } from '../themes';
+import { MAX_THEME_MESSAGE, MAX_THEME_NAME } from '../theme-validation';
 
 const baseThemes = [
   { name: 'Monochrome', message: 'Black and white only!' },
@@ -253,6 +254,81 @@ describe('updateTheme duplicate guard', () => {
     await expect(
       updateTheme(1, 'Weekly Theme Thicc', 'message only edit'),
     ).rejects.toThrow(/already exists at position 3/);
+  });
+});
+
+// ─── validation at the write path ─────────────────────────────────────────────
+
+// The modals are not the only way in. themes.json gets hand edited on the Fly
+// volume, and that bypasses every modal, so the store has to refuse a bad value
+// on its own rather than trusting its caller.
+
+describe('addTheme validates before writing', () => {
+  it('rejects a name that normalizes to nothing', async () => {
+    await expect(addTheme('🔥🔥🔥', 'msg')).rejects.toThrow(/channel name/i);
+  });
+
+  it('does not write to disk when the name normalizes to nothing', async () => {
+    await expect(addTheme('🔥🔥🔥', 'msg')).rejects.toThrow();
+    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+
+  it(`rejects a name over ${MAX_THEME_NAME} characters`, async () => {
+    await expect(
+      addTheme('a'.repeat(MAX_THEME_NAME + 1), 'msg'),
+    ).rejects.toThrow(new RegExp(`${MAX_THEME_NAME} characters`));
+  });
+
+  it(`rejects a message over ${MAX_THEME_MESSAGE} characters`, async () => {
+    await expect(
+      addTheme('Golden Hour', 'a'.repeat(MAX_THEME_MESSAGE + 1)),
+    ).rejects.toThrow(new RegExp(`${MAX_THEME_MESSAGE} characters`));
+  });
+
+  it('stores the name with surrounding whitespace removed', async () => {
+    await addTheme('  Golden Hour  ', 'Shoot at sunset.');
+
+    const written = JSON.parse(
+      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
+    );
+    expect(written.themes[3].name).toBe('Golden Hour');
+  });
+
+  it('accepts an accented name', async () => {
+    await expect(
+      addTheme('Café Night', 'Bring a flask.'),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe('updateTheme validates before writing', () => {
+  it('rejects a name that normalizes to nothing', async () => {
+    await expect(updateTheme(1, '!!!', 'msg')).rejects.toThrow(/channel name/i);
+  });
+
+  it('does not write to disk when the name normalizes to nothing', async () => {
+    await expect(updateTheme(1, '!!!', 'msg')).rejects.toThrow();
+    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+
+  it(`rejects a name over ${MAX_THEME_NAME} characters`, async () => {
+    await expect(
+      updateTheme(1, 'a'.repeat(MAX_THEME_NAME + 1), 'msg'),
+    ).rejects.toThrow(new RegExp(`${MAX_THEME_NAME} characters`));
+  });
+
+  it(`rejects a message over ${MAX_THEME_MESSAGE} characters`, async () => {
+    await expect(
+      updateTheme(1, 'Golden Hour', 'a'.repeat(MAX_THEME_MESSAGE + 1)),
+    ).rejects.toThrow(new RegExp(`${MAX_THEME_MESSAGE} characters`));
+  });
+
+  // Validation has to run before the range check is not the point; the point is
+  // that an out of range index still reports the index, not a name complaint.
+  it('still reports an out of range index rather than a name complaint', async () => {
+    await expect(updateTheme(9, 'Golden Hour', 'msg')).rejects.toThrow(
+      'No theme at position 9',
+    );
   });
 });
 

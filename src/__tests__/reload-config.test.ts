@@ -58,6 +58,89 @@ beforeEach(() => {
   vi.mocked(scheduleCronJob).mockReturnValue(undefined as never);
 });
 
+// themes.json is hand edited on the volume, which calls neither addTheme nor
+// updateTheme. reload-config is the moment the bot first sees that edit, so it
+// is the last place a bad entry can be caught before the rotation reaches it.
+describe('reloadConfigCmd audits the file it just loaded', () => {
+  const contentOf = (i: { reply: ReturnType<typeof vi.fn> }) =>
+    i.reply.mock.calls[0][0].content as string;
+
+  it('says nothing about problems when the list is clean', async () => {
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).not.toMatch(/problem/i);
+  });
+
+  it('reports a name that would wedge the rotation', async () => {
+    vi.mocked(reloadThemes).mockResolvedValue([
+      { name: 'Macro', message: 'm' },
+      { name: '🔥🔥🔥', message: 'm' },
+    ]);
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toMatch(/channel name/i);
+  });
+
+  it('reports the position of the bad entry', async () => {
+    vi.mocked(reloadThemes).mockResolvedValue([
+      { name: 'Macro', message: 'm' },
+      { name: '🔥🔥🔥', message: 'm' },
+    ]);
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toContain('2');
+  });
+
+  it('reports a duplicate name, which is what broke edit-theme in August', async () => {
+    vi.mocked(reloadThemes).mockResolvedValue([
+      { name: 'Thicc and Thirsty', message: 'a' },
+      { name: 'Thicc and Thirsty', message: 'b' },
+    ]);
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction)).toMatch(/same name/i);
+  });
+
+  it('still attaches the files when it finds problems', async () => {
+    vi.mocked(reloadThemes).mockResolvedValue([{ name: '!!!', message: 'm' }]);
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(attachedNames(interaction)).toContain('themes.json');
+  });
+
+  it('keeps the reply inside the Discord message cap on a badly broken file', async () => {
+    vi.mocked(reloadThemes).mockResolvedValue(
+      Array.from({ length: 200 }, () => ({ name: '!!!', message: 'm' })),
+    );
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(contentOf(interaction).length).toBeLessThanOrEqual(2000);
+  });
+
+  // A bad list is still a loaded list. Refusing to reload would leave the bot
+  // running the previous one with no way to see the new file.
+  it('still reloads and reschedules despite problems', async () => {
+    vi.mocked(reloadThemes).mockResolvedValue([{ name: '!!!', message: 'm' }]);
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    expect(scheduleCronJob).toHaveBeenCalled();
+  });
+});
+
 describe('reloadConfigCmd runtime file dump', () => {
   it('attaches both runtime files on the happy path', async () => {
     const interaction = adminInteraction();

@@ -13,6 +13,7 @@ import { requireAdmin } from './index';
 import { getThemes, saveThemes } from '../themes';
 import { getThemeName } from '../rotation';
 import { getState, saveState } from '../state';
+import { isOverSelectLimit, overLimitMessage } from './theme-picker';
 
 export interface IndexedTheme {
   theme: ThemeEntry;
@@ -132,10 +133,9 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
     return;
   }
 
-  if (themes.length > 25) {
+  if (isOverSelectLimit(themes)) {
     await interaction.reply({
-      content:
-        "You have more themes than Discord's menu can handle (max 25). Sounds like a feature request for whoever built this thing. 👀",
+      content: overLimitMessage(themes.length),
       flags: MessageFlags.Ephemeral,
     });
     return;

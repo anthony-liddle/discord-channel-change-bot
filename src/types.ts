@@ -13,6 +13,13 @@ export interface Config {
   channelId: string;
   schedule?: string;
   timezone?: string;
+  /**
+   * Private channel the bot posts rotation failures to. Optional on purpose:
+   * the bot starts and rotates normally without it, because losing the weekly
+   * rename to a misconfigured reporting channel would be worse than the silence
+   * it is meant to fix.
+   */
+  adminChannelId?: string;
 }
 
 export interface Themes {

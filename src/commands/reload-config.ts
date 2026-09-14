@@ -5,6 +5,23 @@ import { scheduleCronJob } from '../scheduler';
 import { requireAdmin } from './index';
 import { reloadThemes } from '../themes';
 import { readRuntimeFiles } from '../runtime-files';
+import { auditThemes, formatThemeProblems } from '../theme-validation';
+import type { ThemeEntry } from '../types';
+
+/**
+ * themes.json is hand edited on the volume, and that path calls neither
+ * addTheme nor updateTheme, so nothing has validated it. reload-config is the
+ * moment the bot first reads that edit, which makes it the last chance to catch
+ * a bad entry before the rotation reaches it on a Monday morning.
+ *
+ * It reports rather than refuses. A list with problems is still the list that
+ * is now loaded, and refusing would leave the bot running the previous one with
+ * no way to see the new file.
+ */
+function describeThemeProblems(themes: ThemeEntry[]): string {
+  const report = formatThemeProblems(auditThemes(themes));
+  return report ? `\n\n${report}` : '';
+}
 
 /**
  * Attaches the raw runtime files to the reply. They are attachments rather than
@@ -69,24 +86,22 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
     const schedule = config.schedule ?? '0 9 * * 1';
     const timezone = config.timezone ?? 'America/New_York';
 
-    // Import rotateTheme lazily to avoid circular dependency
-    const { rotateTheme } = await import('../rotation');
+    // Imported lazily to avoid a circular dependency through rotation.
+    const { makeScheduledRotation } = await import('../scheduled-rotation');
 
     try {
       const { getConfig } = await import('../config');
-      scheduleCronJob(schedule, timezone, async () => {
-        const result = await rotateTheme(interaction.client, getConfig());
-        if (!result.success) {
-          console.error(
-            `Scheduled rotation failed: ${result.error ?? 'unknown error'}`,
-          );
-        }
-      });
+      scheduleCronJob(
+        schedule,
+        timezone,
+        makeScheduledRotation(interaction.client, getConfig),
+      );
 
       await interaction.reply({
         content:
           `Config reloaded! ${themes.length} themes loaded. ` +
-          `Cron rescheduled: ${schedule} (${timezone})\n${dump.summary}`,
+          `Cron rescheduled: ${schedule} (${timezone})\n${dump.summary}` +
+          describeThemeProblems(themes),
         files: dump.files,
         flags: MessageFlags.Ephemeral,
       });
@@ -94,7 +109,8 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
       await interaction.reply({
         content:
           `Config reloaded with ${themes.length} themes, but cron schedule is invalid: ${schedule}\n` +
-          dump.summary,
+          dump.summary +
+          describeThemeProblems(themes),
         files: dump.files,
         flags: MessageFlags.Ephemeral,
       });

@@ -114,7 +114,27 @@ export function isOverSelectLimit(themes: ThemeEntry[]): boolean {
   return themes.length > MAX_SELECT_OPTIONS;
 }
 
-export const OVER_LIMIT_MESSAGE =
-  "You have more themes than Discord's menu can handle (max 25), so this " +
-  'command cannot show them all. Use /theme-bot reorder-themes to see the ' +
-  'full list, and trim it below 26 before editing or deleting.';
+/**
+ * What to say when the list is too long for a menu.
+ *
+ * The previous wording was itself a defect. It sent the admin to
+ * /theme-bot reorder-themes, which refuses at the same threshold, and then told
+ * them to trim the list below 26, which at 26 themes no command can do, because
+ * delete-theme is one of the two that just refused. Every action named here has
+ * to be one that actually works from where the admin is standing.
+ */
+export function overLimitMessage(themeCount: number): string {
+  return (
+    `You have ${themeCount} themes. A Discord menu can only offer ` +
+    `${MAX_SELECT_OPTIONS}, so this command cannot show them all and will ` +
+    'not guess which ones to leave out.\n\n' +
+    'Still working right now:\n' +
+    '- `/theme-bot themes` shows what is coming up next and the total.\n' +
+    '- `/theme-bot rotate-now` still rotates.\n' +
+    '- `/theme-bot reload-config` attaches the current `themes.json`, which ' +
+    'is how you get the full list out of the bot.\n\n' +
+    'Shortening the list means editing `themes.json` on the machine the bot ' +
+    'runs on and then running `/theme-bot reload-config` to pick it up. That ' +
+    'cannot be done from inside Discord, so it needs whoever hosts the bot.'
+  );
+}

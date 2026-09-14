@@ -11,6 +11,7 @@ vi.mock('../themes', () => ({
 
 import { getThemes, updateTheme } from '../themes';
 import { editThemeCmd } from '../commands/edit-theme';
+import { MAX_THEME_MESSAGE, MAX_THEME_NAME } from '../theme-validation';
 
 // awaitModalSubmit builds an InteractionCollector with no message, channel or
 // guild, so it listens client-wide and filters only on interaction type plus
@@ -94,10 +95,101 @@ function makeModalSubmit(customId: string, name: string, message: string) {
   };
 }
 
+function modalInputs(select: { showModal: ReturnType<typeof vi.fn> }) {
+  const json = select.showModal.mock.calls[0][0].toJSON();
+  const inputs: Record<string, { max_length?: number }> = {};
+  for (const label of json.components) {
+    inputs[label.component.custom_id] = label.component;
+  }
+  return inputs;
+}
+
 beforeEach(() => {
   collectors = [];
   vi.mocked(getThemes).mockResolvedValue(themes);
   vi.mocked(updateTheme).mockResolvedValue(undefined);
+});
+
+// The prefill now slices before setValue, so it would throw on a non-string.
+// themeNameText and themeMessageText coerce first, which is what keeps this
+// safe, and this pins that rather than trusting it. A throw here lands after
+// the defer but before showModal, so the admin gets a modal that never opens.
+describe('edit-theme prefill survives a malformed stored entry', () => {
+  const malformed = [
+    { name: null, message: null },
+    { name: 7, message: undefined },
+    'legacy string theme',
+    { name: 'x'.repeat(150), message: 'y'.repeat(9000) },
+    null,
+  ] as unknown as typeof themes;
+
+  for (let index = 0; index < malformed.length; index++) {
+    it(`opens the modal for malformed entry ${index + 1} instead of throwing`, async () => {
+      vi.mocked(getThemes).mockResolvedValue(malformed);
+      const a = makeInvocation('inv-A');
+      a.select.values = [String(index)];
+
+      void editThemeCmd(
+        a.interaction as unknown as ChatInputCommandInteraction,
+        {} as never,
+      );
+      await settle();
+
+      expect(a.select.showModal).toHaveBeenCalled();
+      expect(() => a.select.showModal.mock.calls[0][0].toJSON()).not.toThrow();
+    });
+  }
+});
+
+describe('edit-theme modal input limits', () => {
+  it('caps the theme name in the modal itself', async () => {
+    const a = makeInvocation('inv-A');
+    void editThemeCmd(
+      a.interaction as unknown as ChatInputCommandInteraction,
+      {} as never,
+    );
+    await settle();
+
+    expect(modalInputs(a.select).themeName.max_length).toBe(MAX_THEME_NAME);
+  });
+
+  it('caps the channel message in the modal itself', async () => {
+    const a = makeInvocation('inv-A');
+    void editThemeCmd(
+      a.interaction as unknown as ChatInputCommandInteraction,
+      {} as never,
+    );
+    await settle();
+
+    expect(modalInputs(a.select).channelMessage.max_length).toBe(
+      MAX_THEME_MESSAGE,
+    );
+  });
+});
+
+describe('edit-theme echoes the resulting channel name', () => {
+  it('shows the channel name the edited theme will produce', async () => {
+    const a = makeInvocation('inv-A');
+    void editThemeCmd(
+      a.interaction as unknown as ChatInputCommandInteraction,
+      {} as never,
+    );
+    await settle();
+
+    const submit = makeModalSubmit(
+      modalCustomIdFrom(a.select),
+      'Weekly Theme Toys',
+      'msg',
+    );
+    submitModal(submit);
+    await settle();
+
+    expect(submit.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('weekly-theme-toys'),
+      }),
+    );
+  });
 });
 
 describe('edit-theme modal scoping', () => {

@@ -3,28 +3,14 @@ import { PermissionFlagsBits } from 'discord.js';
 import type { Config, ThemeEntry, UpcomingTheme } from './types';
 import { getState, setStateIndex } from './state';
 import { getThemes } from './themes';
+import { normalizeChannelName } from './channel-name';
 
 let isRotating = false;
 
-export function normalizeChannelName(name: string): string {
-  if (!name || typeof name !== 'string') {
-    throw new Error('Channel name must be a non-empty string');
-  }
-
-  const normalized = name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-_]/g, '')
-    .slice(0, 100);
-
-  if (normalized.length < 1) {
-    throw new Error(
-      'Channel name must have at least 1 valid character after normalization',
-    );
-  }
-
-  return normalized;
-}
+// Re-exported so the many existing callers and tests that reach for it here
+// keep working. The implementation moved to channel-name.ts so the theme store
+// can validate a write without importing rotation, which imports the store.
+export { normalizeChannelName };
 
 export function getThemeName(theme: ThemeEntry): string {
   return typeof theme === 'object' ? theme.name : theme;

@@ -30,10 +30,14 @@ Shows the next 5 upcoming themes in the rotation and which one is currently acti
 
 Opens a form where you can add a new theme to the rotation. You'll be asked for:
 
-- **Theme Name** — This becomes the channel name. It'll be automatically lowercased and spaces will become hyphens (e.g. "Black and White" → `black-and-white`). Keep it short and descriptive.
-- **Channel Message** — The message the bot posts in the channel when this theme becomes active. Supports Discord markdown (bold, italics, etc.).
+- **Theme Name** — This becomes the channel name. It'll be automatically lowercased and spaces will become hyphens (e.g. "Black and White" → `black-and-white`). Accented letters lose their accents, so "Café Night" becomes `cafe-night`. Anything else that isn't a letter, number, hyphen or underscore is dropped. Up to 95 characters; keep it short and descriptive.
+- **Channel Message** — The message the bot posts in the channel when this theme becomes active. Supports Discord markdown (bold, italics, etc.). Up to 2000 characters, which is Discord's own limit on a message.
+
+After you submit, the bot tells you exactly what the channel will be renamed to, so you can check the result before the theme comes up.
 
 The new theme is added to the end of the rotation queue.
+
+**Names the bot will refuse:** a name that has no letters or numbers left after the rules above, such as one made only of emoji or only of punctuation. There would be nothing to rename the channel to, and the rotation would stop on that theme every week. Give it at least one letter or number. A name already used by another theme is refused too, because the two would be impossible to tell apart in the menus.
 
 ---
 
@@ -41,8 +45,10 @@ The new theme is added to the end of the rotation queue.
 
 Opens a dropdown to select an existing theme, then shows a form pre-filled with its current values. You can update:
 
-- **Theme Name** — Changing this renames the theme in the rotation. The same formatting rules apply (lowercased, spaces → hyphens).
-- **Channel Message** — The message posted when this theme becomes active.
+- **Theme Name** — Changing this renames the theme in the rotation. The same rules and limits as `add-theme` apply (lowercased, spaces → hyphens, accents dropped, up to 95 characters).
+- **Channel Message** — The message posted when this theme becomes active. Up to 2000 characters.
+
+As with `add-theme`, the bot shows you the channel name your edit will produce.
 
 Changes take effect in the next rotation that uses this theme.
 
@@ -108,3 +114,5 @@ The current schedule is pre-selected so you can see what's configured. The chang
 - **Theme order** — themes rotate in the order they appear in the list. Use `/theme-bot themes` to see what's coming up, and `/theme-bot reorder-themes` to change the order.
 - **The bot needs the right permissions** — if it ever stops renaming the channel, check that it still has `Manage Channels` and `Send Messages` permissions in that channel.
 - **Discord rate limits channel renames** to 2 per 10 minutes. The weekly schedule respects this, but avoid using `/theme-bot rotate-now` in quick succession.
+- **Theme name and message limits** are 95 characters for a name and 2000 for a message. The forms stop you going over rather than failing afterwards. The name limit leaves room for the position number the menus show in front of each theme.
+- **If a scheduled rotation fails**, the bot posts about it in the admin channel, if the bot owner has configured one. A failed rotation does not skip the theme: the channel keeps its old name and the same theme is tried again on the next run, so nothing is lost from the queue.

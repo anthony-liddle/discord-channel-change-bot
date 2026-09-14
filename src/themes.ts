@@ -1,6 +1,7 @@
 import { ThemeEntry, Themes } from './types';
 import fs from 'fs/promises';
 import { dataPath } from './paths';
+import { validateThemeMessage, validateThemeName } from './theme-validation';
 
 export const THEMES_PATH = dataPath('themes.json');
 
@@ -37,12 +38,18 @@ function assertNameIsFree(
 }
 
 export async function addTheme(name: string, message: string): Promise<void> {
+  // Validation runs here rather than only in the modal handler, because a
+  // hand edit of themes.json on the volume reaches this function and never
+  // sees a modal.
+  const cleanName = validateThemeName(name);
+  const cleanMessage = validateThemeMessage(message);
+
   const themes = await getThemes();
-  assertNameIsFree(themes, name);
+  assertNameIsFree(themes, cleanName);
 
   const tempPath = `${THEMES_PATH}.tmp`;
 
-  themes.push({ name, message });
+  themes.push({ name: cleanName, message: cleanMessage });
   cachedThemes = themes;
 
   await fs.writeFile(tempPath, JSON.stringify({ themes: cachedThemes }));
@@ -142,12 +149,16 @@ export async function updateTheme(
 ): Promise<void> {
   const themes = await getThemes();
   assertIndexInRange(index, themes.length);
+
+  const cleanName = validateThemeName(newName);
+  const cleanMessage = validateThemeMessage(newMessage);
+
   // The entry being edited is exempt, so keeping its own name is allowed even
   // when a duplicate of it exists elsewhere in the list.
-  assertNameIsFree(themes, newName, index);
+  assertNameIsFree(themes, cleanName, index);
 
   const updated = themes.map((t, i) =>
-    i === index ? { name: newName, message: newMessage } : t,
+    i === index ? { name: cleanName, message: cleanMessage } : t,
   );
   cachedThemes = updated;
 
