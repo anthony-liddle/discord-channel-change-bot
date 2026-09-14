@@ -30,12 +30,12 @@ describe('readRuntimeFiles', () => {
 
   it('returns the raw contents of each file unparsed', async () => {
     vi.mocked(fsp.readFile).mockResolvedValue(
-      '{"themes":[{"name":"Thicc"}]}' as unknown as Buffer,
+      '{"themes":[{"name":"Noir"}]}' as unknown as Buffer,
     );
 
     const [themes] = await readRuntimeFiles();
 
-    expect(themes.content).toBe('{"themes":[{"name":"Thicc"}]}');
+    expect(themes.content).toBe('{"themes":[{"name":"Noir"}]}');
     expect(themes.error).toBeNull();
   });
 

@@ -28,8 +28,8 @@ const baseThemes = [
 // the first one, which is why both operations take an index instead.
 const duplicateThemes = [
   { name: 'Monochrome', message: 'first' },
-  { name: 'Weekly Theme Thicc', message: 'second' },
-  { name: 'Weekly Theme Thicc', message: 'third' },
+  { name: 'Weekly Theme Noir', message: 'second' },
+  { name: 'Weekly Theme Noir', message: 'third' },
 ];
 
 function setupThemes(themes = baseThemes) {
@@ -136,17 +136,17 @@ describe('updateTheme', () => {
     setupThemes(duplicateThemes);
     await reloadThemes();
 
-    await updateTheme(2, 'Weekly Theme Thicc Two', 'renamed');
+    await updateTheme(2, 'Weekly Theme Noir Two', 'renamed');
 
     const written = JSON.parse(
       vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
     );
     expect(written.themes[1]).toEqual({
-      name: 'Weekly Theme Thicc',
+      name: 'Weekly Theme Noir',
       message: 'second',
     });
     expect(written.themes[2]).toEqual({
-      name: 'Weekly Theme Thicc Two',
+      name: 'Weekly Theme Noir Two',
       message: 'renamed',
     });
   });
@@ -156,7 +156,7 @@ describe('updateTheme', () => {
     await reloadThemes();
 
     await expect(
-      updateTheme(1, 'Weekly Theme Thicc One', 'kept'),
+      updateTheme(1, 'Weekly Theme Noir One', 'kept'),
     ).resolves.toBeUndefined();
   });
 
@@ -171,7 +171,7 @@ describe('updateTheme', () => {
 
 // A double modal submit is the most plausible way two identical names got into
 // the live file. Names are compared trimmed and case insensitively because
-// normalizeChannelName lowercases, so "Thicc" and "thicc" become the same
+// normalizeChannelName lowercases, so "Noir" and "noir" become the same
 // channel name and are duplicates for every purpose that matters.
 
 describe('addTheme duplicate guard', () => {
@@ -239,7 +239,7 @@ describe('updateTheme duplicate guard', () => {
     await reloadThemes();
 
     await expect(
-      updateTheme(2, 'Weekly Theme Thicc Two', 'renamed'),
+      updateTheme(2, 'Weekly Theme Noir Two', 'renamed'),
     ).resolves.toBeUndefined();
   });
 
@@ -252,7 +252,7 @@ describe('updateTheme duplicate guard', () => {
     await reloadThemes();
 
     await expect(
-      updateTheme(1, 'Weekly Theme Thicc', 'message only edit'),
+      updateTheme(1, 'Weekly Theme Noir', 'message only edit'),
     ).rejects.toThrow(/already exists at position 3/);
   });
 });
