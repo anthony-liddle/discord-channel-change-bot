@@ -20,6 +20,7 @@ import { editThemeCmd } from '../commands/edit-theme';
 import { deleteThemeCmd } from '../commands/delete-theme';
 import { reorderThemesCmd } from '../commands/reorder-themes';
 import { MAX_SELECT_OPTIONS } from '../commands/theme-picker';
+import { MAX_THEME_MESSAGE } from '../theme-validation';
 
 /**
  * The 2026-09-14 ceiling report had to work out what happens at 26 themes by
@@ -147,7 +148,7 @@ describe('reorder-themes at each theme count', () => {
     });
 
     if (count <= 25) {
-      it(`reorder-themes at ${count} themes keeps its list inside the 2000 character message cap`, async () => {
+      it(`reorder-themes at ${count} themes keeps its list inside the ${MAX_THEME_MESSAGE} character message cap`, async () => {
         vi.mocked(getThemes).mockResolvedValue(themeList(count));
         const i = makeDeferred();
 
@@ -158,7 +159,7 @@ describe('reorder-themes at each theme count', () => {
         await settle();
 
         for (const text of textOf(i.reply)) {
-          expect(text.length).toBeLessThanOrEqual(2000);
+          expect(text.length).toBeLessThanOrEqual(MAX_THEME_MESSAGE);
         }
       });
     }

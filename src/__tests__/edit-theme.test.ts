@@ -109,6 +109,37 @@ beforeEach(() => {
   vi.mocked(updateTheme).mockResolvedValue(undefined);
 });
 
+// The prefill now slices before setValue, so it would throw on a non-string.
+// themeNameText and themeMessageText coerce first, which is what keeps this
+// safe, and this pins that rather than trusting it. A throw here lands after
+// the defer but before showModal, so the admin gets a modal that never opens.
+describe('edit-theme prefill survives a malformed stored entry', () => {
+  const malformed = [
+    { name: null, message: null },
+    { name: 7, message: undefined },
+    'legacy string theme',
+    { name: 'x'.repeat(150), message: 'y'.repeat(9000) },
+    null,
+  ] as unknown as typeof themes;
+
+  for (let index = 0; index < malformed.length; index++) {
+    it(`opens the modal for malformed entry ${index + 1} instead of throwing`, async () => {
+      vi.mocked(getThemes).mockResolvedValue(malformed);
+      const a = makeInvocation('inv-A');
+      a.select.values = [String(index)];
+
+      void editThemeCmd(
+        a.interaction as unknown as ChatInputCommandInteraction,
+        {} as never,
+      );
+      await settle();
+
+      expect(a.select.showModal).toHaveBeenCalled();
+      expect(() => a.select.showModal.mock.calls[0][0].toJSON()).not.toThrow();
+    });
+  }
+});
+
 describe('edit-theme modal input limits', () => {
   it('caps the theme name at 100 characters in the modal itself', async () => {
     const a = makeInvocation('inv-A');
