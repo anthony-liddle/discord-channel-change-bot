@@ -22,6 +22,13 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=build /app/dist ./dist
 
+# The deploy marker, shown in the /theme-bot themes footer. It arrives as a
+# build arg because .dockerignore excludes .git, so the image cannot read the
+# SHA for itself. The default is deliberately not a version-shaped string: an
+# image built without this reports "unknown" rather than something plausible.
+ARG GIT_SHA=unknown
+ENV DEPLOY_SHA=$GIT_SHA
+
 # The persistent volume mounts here. themes.json, state.json and config.json
 # live on it, not in /app, because /app is rebuilt on every deploy.
 ENV DATA_DIR=/data

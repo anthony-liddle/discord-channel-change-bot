@@ -1032,9 +1032,10 @@ it goes last.
 11. **Watch the first real rotation.** On Monday, `fly logs`. Compare against
     [Appendix A](#appendix-a-reading-the-logs).
 
-12. **Merge PR #55.** Then `fly deploy`. Then bump `DEPLOY_MARKER` in
-    `src/version.ts` and confirm the new value in `/theme-bot themes`. That is
-    the loop that has never closed on this project.
+12. **Merge, deploy, then confirm.** Run `/theme-bot themes` and check the
+    build value in the footer against the commit you merged. It is the short
+    git SHA the image was built from, so it changes by itself. That is the loop
+    that had never closed on this project.
 
 ---
 
@@ -1105,9 +1106,12 @@ malformed file on the volume.
 
 **Deploys.** Nothing is automatic, deliberately. Dependabot will keep opening
 dependency PRs. Merging one changes `main` and changes nothing in production
-until you run `fly deploy`. **If you ignore this, you will eventually believe a
-fix is live when it is not, which is the exact failure that started all of
-this.** Bump `DEPLOY_MARKER` whenever it matters and check the footer.
+until it is deployed. **If you ignore this, you will eventually believe a fix
+is live when it is not, which is the exact failure that started all of this.**
+The footer of `/theme-bot themes` shows the short git SHA the running image was
+built from, so comparing it with `git log -1 --format=%h origin/main` answers
+"is my change live" without trusting anyone's memory. `unknown` there means the
+SHA never reached the image.
 
 **The machine going down.** A Fly volume lives on one physical host, so a host
 failure can mean downtime until it is restored. Fly takes automatic volume

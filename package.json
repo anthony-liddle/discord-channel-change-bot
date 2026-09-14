@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "deploy": "flyctl deploy --remote-only --build-arg GIT_SHA=$(git diff --quiet HEAD 2>/dev/null && git rev-parse HEAD || echo dirty)",
     "prepare": "husky"
   },
   "engines": {
