@@ -16,8 +16,6 @@ vi.mock('../state', () => ({
 }));
 
 import { getThemes } from '../themes';
-import { editThemeCmd } from '../commands/edit-theme';
-import { deleteThemeCmd } from '../commands/delete-theme';
 import { reorderThemesCmd } from '../commands/reorder-themes';
 import { MAX_SELECT_OPTIONS } from '../commands/theme-picker';
 import { MAX_THEME_MESSAGE } from '../theme-validation';
@@ -26,6 +24,9 @@ import { MAX_THEME_MESSAGE } from '../theme-validation';
  * The 2026-09-14 ceiling report had to work out what happens at 26 themes by
  * reading every guard by hand, because nothing tested it. These name the
  * command and the count so the next person reads a test name instead.
+ *
+ * edit-theme and delete-theme moved to theme-option-handlers.test.ts when they
+ * stopped using a select menu and started taking an autocompleted option.
  *
  * 24 is under the cap, 25 is exactly the cap, 26 is the first count that
  * refuses, and 200 is the far side of any plausible growth.
@@ -68,66 +69,8 @@ const textOf = (mock: ReturnType<typeof vi.fn>) =>
 const refused = (texts: string[]) =>
   texts.some((t) => t.includes('A Discord menu can only offer'));
 
-const showedAPicker = (mock: ReturnType<typeof vi.fn>) =>
-  mock.mock.calls.some(
-    (c) => ((c[0] as { components?: unknown[] })?.components ?? []).length > 0,
-  );
-
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-describe('edit-theme at each theme count', () => {
-  for (const count of COUNTS) {
-    const over = count > MAX_SELECT_OPTIONS;
-
-    it(`edit-theme at ${count} themes ${over ? 'refuses with the over limit message' : 'shows the picker'}`, async () => {
-      vi.mocked(getThemes).mockResolvedValue(themeList(count));
-      const i = makeDeferred();
-
-      void editThemeCmd(
-        i as unknown as ChatInputCommandInteraction,
-        {} as never,
-      );
-      await settle();
-
-      expect(refused(textOf(i.editReply))).toBe(over);
-      expect(showedAPicker(i.editReply)).toBe(!over);
-    });
-
-    it(`edit-theme at ${count} themes acknowledges before building any component`, async () => {
-      vi.mocked(getThemes).mockResolvedValue(themeList(count));
-      const i = makeDeferred();
-
-      void editThemeCmd(
-        i as unknown as ChatInputCommandInteraction,
-        {} as never,
-      );
-      await settle();
-
-      expect(i.deferReply).toHaveBeenCalled();
-    });
-  }
-});
-
-describe('delete-theme at each theme count', () => {
-  for (const count of COUNTS) {
-    const over = count > MAX_SELECT_OPTIONS;
-
-    it(`delete-theme at ${count} themes ${over ? 'refuses with the over limit message' : 'shows the picker'}`, async () => {
-      vi.mocked(getThemes).mockResolvedValue(themeList(count));
-      const i = makeDeferred();
-
-      void deleteThemeCmd(
-        i as unknown as ChatInputCommandInteraction,
-        {} as never,
-      );
-      await settle();
-
-      expect(refused(textOf(i.editReply))).toBe(over);
-      expect(showedAPicker(i.editReply)).toBe(!over);
-    });
-  }
 });
 
 describe('reorder-themes at each theme count', () => {
@@ -164,21 +107,4 @@ describe('reorder-themes at each theme count', () => {
       });
     }
   }
-});
-
-// The refusal is only honest if it names something that works. At 26 themes
-// delete-theme has just refused, so "delete a theme" is not an available
-// action and the message must not suggest one.
-describe('the over limit message names only working actions', () => {
-  it('edit-theme at 26 themes does not point at another command that also refuses', async () => {
-    vi.mocked(getThemes).mockResolvedValue(themeList(26));
-    const i = makeDeferred();
-
-    void editThemeCmd(i as unknown as ChatInputCommandInteraction, {} as never);
-    await settle();
-
-    const said = textOf(i.editReply).join('\n');
-    expect(said).not.toContain('reorder-themes');
-    expect(said).toContain('reload-config');
-  });
 });
