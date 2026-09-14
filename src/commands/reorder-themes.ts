@@ -4,16 +4,23 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
+  LabelBuilder,
   MessageFlags,
-  StringSelectMenuBuilder,
-  StringSelectMenuInteraction,
-  StringSelectMenuOptionBuilder,
+  ModalBuilder,
+  ModalSubmitInteraction,
+  TextInputBuilder,
+  TextInputStyle,
 } from 'discord.js';
 import { requireAdmin } from './index';
 import { getThemes, saveThemes } from '../themes';
-import { getThemeName } from '../rotation';
 import { getState, saveState } from '../state';
-import { isOverSelectLimit, overLimitMessage } from './theme-picker';
+import { themeNameText } from './theme-picker';
+import {
+  applyMove,
+  buildReorderPages,
+  pageContaining,
+  parseMove,
+} from './reorder-view';
 
 export interface IndexedTheme {
   theme: ThemeEntry;
@@ -30,255 +37,221 @@ export function buildRotatedView(
   });
 }
 
-function buildListText(
-  items: IndexedTheme[],
-  highlightDisplayIndex?: number,
-): string {
-  return (
-    '**Current theme order:**\n' +
-    items
-      .map((item, i) => {
-        const marker = i === highlightDisplayIndex ? ' →' : '';
-        const currentMarker = i === 0 ? ' (current)' : '';
-        return `${i + 1}. \`${getThemeName(item.theme)}\`${currentMarker}${marker}`;
-      })
-      .join('\n')
-  );
-}
+const TIMEOUT = 5 * 60 * 1000;
 
-function buildStep1Components(items: IndexedTheme[], userId: string) {
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`reorderThemeSelect-${userId}`)
-    .setPlaceholder('Select a theme to move')
-    .addOptions(
-      items.map((item, i) =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(`${i + 1}. ${getThemeName(item.theme)}`)
-          .setValue(String(item.absoluteIndex)),
-      ),
-    );
+const FOOTER =
+  '\nUse **Move** and give the position to move and where to put it. ' +
+  'Positions come from this list, and a move works across pages.';
 
-  const doneButton = new ButtonBuilder()
-    .setCustomId(`reorderThemeDone-${userId}`)
-    .setLabel('✓ Done')
-    .setStyle(ButtonStyle.Success);
-
-  return [
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
-    new ActionRowBuilder<ButtonBuilder>().addComponents(doneButton),
-  ];
-}
-
-function buildRotatedViewFromThemes(themes: ThemeEntry[]): IndexedTheme[] {
-  const { currentIndex } = getState();
-  return buildRotatedView(themes, currentIndex);
-}
-
-function buildStep2Components(
-  selectedIndex: number,
-  total: number,
-  userId: string,
-) {
-  const upButton = new ButtonBuilder()
-    .setCustomId(`reorderThemeUp-${userId}`)
-    .setLabel('↑ Move Up')
-    .setStyle(ButtonStyle.Primary)
-    .setDisabled(selectedIndex === 0);
-
-  const downButton = new ButtonBuilder()
-    .setCustomId(`reorderThemeDown-${userId}`)
-    .setLabel('↓ Move Down')
-    .setStyle(ButtonStyle.Primary)
-    .setDisabled(selectedIndex === total - 1);
-
-  const saveButton = new ButtonBuilder()
-    .setCustomId(`reorderThemeSave-${userId}`)
-    .setLabel('✓ Save')
-    .setStyle(ButtonStyle.Success);
-
-  const cancelButton = new ButtonBuilder()
-    .setCustomId(`reorderThemeCancel-${userId}`)
-    .setLabel('✕ Cancel')
-    .setStyle(ButtonStyle.Secondary);
-
-  return [
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      upButton,
-      downButton,
-      saveButton,
-      cancelButton,
-    ),
-  ];
-}
-
+/**
+ * Reordering a list of any length.
+ *
+ * Autocomplete solved edit and delete, which only ever need one theme. Reorder
+ * needs the whole list visible, so the fix is different: the list is paged text
+ * rather than a menu, and a move is typed as two positions rather than walked
+ * one step at a time.
+ *
+ * That matters for the workflow. Moving a theme from position 30 to position 3
+ * used to be twenty seven clicks of "move up". It is now one Move click and one
+ * form, whatever the distance and whatever the list length. The page buttons
+ * only change what is on screen; they are never needed to perform a move.
+ *
+ * Each move is saved as it happens. There is no bulk cancel, which is the
+ * trade: losing a sitting's worth of moves to the five minute timeout would be
+ * worse than having to move something back.
+ */
 export const reorderThemesCmd: CommandHandler = async (interaction) => {
   if (!(await requireAdmin(interaction))) return;
 
-  const userId = interaction.user.id;
+  // Acknowledge before building any component. This was the last handler in
+  // the codebase that built components as an argument to reply(), which put
+  // builder validation inside the 3 second window with no way to report it.
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   let themes = await getThemes();
 
   if (themes.length === 0) {
-    await interaction.reply({
-      content: 'No themes to reorder.',
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.editReply({ content: 'No themes to reorder.' });
     return;
   }
 
   if (themes.length === 1) {
-    await interaction.reply({
+    await interaction.editReply({
       content: 'Nothing to reorder, only one theme exists.',
-      flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
-  if (isOverSelectLimit(themes)) {
-    await interaction.reply({
-      content: overLimitMessage(themes.length),
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
+  const prevId = `reorderPrev-${interaction.id}`;
+  const nextId = `reorderNext-${interaction.id}`;
+  const moveId = `reorderMove-${interaction.id}`;
+  const doneId = `reorderDone-${interaction.id}`;
+  const modalId = `reorderMoveModal-${interaction.id}`;
+
+  let pageIndex = 0;
+  let notice = '';
+
+  function render() {
+    const view = buildRotatedView(themes, getState().currentIndex);
+    const pages = buildReorderPages(view);
+    if (pageIndex > pages.length - 1) pageIndex = pages.length - 1;
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(prevId)
+        .setLabel('Previous')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(pageIndex === 0),
+      new ButtonBuilder()
+        .setCustomId(nextId)
+        .setLabel('Next')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(pageIndex >= pages.length - 1),
+      new ButtonBuilder()
+        .setCustomId(moveId)
+        .setLabel('Move')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(doneId)
+        .setLabel('Done')
+        .setStyle(ButtonStyle.Success),
+    );
+
+    const body = notice ? `${pages[pageIndex]}\n\n${notice}` : pages[pageIndex];
+    return { content: `${body}\n${FOOTER}`, components: [row] };
   }
 
-  let view = buildRotatedViewFromThemes(themes);
-
-  const response = await interaction.reply({
-    content: buildListText(view),
-    components: buildStep1Components(view, userId),
-    flags: MessageFlags.Ephemeral,
-  });
+  const response = await interaction.editReply(render());
 
   while (true) {
-    let step1Interaction;
+    let button;
     try {
-      step1Interaction = await response.awaitMessageComponent({
+      button = await response.awaitMessageComponent({
+        componentType: ComponentType.Button,
         filter: (i) =>
-          i.user.id === userId &&
-          (i.customId === `reorderThemeSelect-${userId}` ||
-            i.customId === `reorderThemeDone-${userId}`),
-        time: 5 * 60 * 1000,
+          i.user.id === interaction.user.id &&
+          [prevId, nextId, moveId, doneId].includes(i.customId),
+        time: TIMEOUT,
       });
     } catch {
       await interaction.editReply({ content: 'Timed out.', components: [] });
       return;
     }
 
-    if (step1Interaction.customId === `reorderThemeDone-${userId}`) {
-      await step1Interaction.update({ content: 'Done!', components: [] });
+    if (button.customId === doneId) {
+      notice = '';
+      const view = buildRotatedView(themes, getState().currentIndex);
+      await button.update({
+        content: buildReorderPages(view)[pageIndex],
+        components: [],
+      });
       return;
     }
 
-    // Value is the absolute file index of the selected theme
-    const originalAbsoluteIndex = parseInt(
-      (step1Interaction as StringSelectMenuInteraction).values[0],
-    );
-    let workingView = [...view];
-    let selectedDisplayIndex = workingView.findIndex(
-      (item) => item.absoluteIndex === originalAbsoluteIndex,
-    );
+    if (button.customId === prevId || button.customId === nextId) {
+      pageIndex += button.customId === nextId ? 1 : -1;
+      notice = '';
+      await button.update(render());
+      continue;
+    }
 
-    await step1Interaction.update({
-      content: buildListText(workingView, selectedDisplayIndex),
-      components: buildStep2Components(
-        selectedDisplayIndex,
-        workingView.length,
-        userId,
-      ),
-    });
+    const total = themes.length;
+    const modal = new ModalBuilder()
+      .setCustomId(modalId)
+      .setTitle('Move a theme');
 
-    let exitLoop = false;
+    const fromInput = new TextInputBuilder()
+      .setCustomId('fromPosition')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder(`1 to ${total}`)
+      .setMaxLength(4)
+      .setRequired(true);
 
-    await new Promise<void>((resolve) => {
-      const collector = response.createMessageComponentCollector({
-        componentType: ComponentType.Button,
+    const toInput = new TextInputBuilder()
+      .setCustomId('toPosition')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder(`1 to ${total}`)
+      .setMaxLength(4)
+      .setRequired(true);
+
+    modal.addLabelComponents([
+      new LabelBuilder()
+        .setLabel('Move the theme at position')
+        .setDescription('The number shown beside it in the list')
+        .setTextInputComponent(fromInput),
+      new LabelBuilder()
+        .setLabel('To position')
+        .setDescription('Where it should end up')
+        .setTextInputComponent(toInput),
+    ]);
+
+    await button.showModal(modal);
+
+    // Keyed on interaction.id, not the user, because awaitModalSubmit collects
+    // client wide and two live reorder runs would otherwise both take a submit.
+    let submitted: ModalSubmitInteraction;
+    try {
+      submitted = await interaction.awaitModalSubmit({
         filter: (i) =>
-          i.user.id === userId &&
-          [
-            `reorderThemeUp-${userId}`,
-            `reorderThemeDown-${userId}`,
-            `reorderThemeSave-${userId}`,
-            `reorderThemeCancel-${userId}`,
-          ].includes(i.customId),
-        time: 5 * 60 * 1000,
+          i.customId === modalId && i.user.id === interaction.user.id,
+        time: TIMEOUT,
       });
+    } catch {
+      notice = 'That move form timed out. Press Move to try again.';
+      await interaction.editReply(render());
+      continue;
+    }
 
-      collector.on('collect', async (btn) => {
-        if (
-          btn.customId === `reorderThemeUp-${userId}` ||
-          btn.customId === `reorderThemeDown-${userId}`
-        ) {
-          const newDisplayIndex =
-            btn.customId === `reorderThemeUp-${userId}`
-              ? selectedDisplayIndex - 1
-              : selectedDisplayIndex + 1;
-          const updated = [...workingView];
-          const [moved] = updated.splice(selectedDisplayIndex, 1);
-          updated.splice(newDisplayIndex, 0, moved);
-          workingView = updated;
-          selectedDisplayIndex = newDisplayIndex;
+    try {
+      await submitted.deferUpdate();
+    } catch {
+      // Nothing to do. The list is still redrawn below.
+    }
 
-          await btn.update({
-            content: buildListText(workingView, selectedDisplayIndex),
-            components: buildStep2Components(
-              selectedDisplayIndex,
-              workingView.length,
-              userId,
-            ),
-          });
-        } else if (btn.customId === `reorderThemeSave-${userId}`) {
-          collector.stop('save');
-          try {
-            const state = getState();
-            const trackedName = getThemeName(themes[state.currentIndex]);
-            const desired = new Array<ThemeEntry>(workingView.length);
-            for (let i = 0; i < workingView.length; i++) {
-              desired[(state.currentIndex + i) % workingView.length] =
-                workingView[i].theme;
-            }
-            await saveThemes(desired);
-            themes = await getThemes();
-            const newCurrentIndex = themes.findIndex(
-              (t) => getThemeName(t) === trackedName,
-            );
-            await saveState({
-              currentIndex:
-                newCurrentIndex >= 0 ? newCurrentIndex : state.currentIndex,
-            });
-            view = buildRotatedViewFromThemes(themes);
-            await btn.update({
-              content: buildListText(view),
-              components: buildStep1Components(view, userId),
-            });
-          } catch (err) {
-            await btn.update({
-              content: `Failed to save theme order.\n> ${(err as Error).message}`,
-              components: [],
-            });
-            exitLoop = true;
-          }
-          resolve();
-        } else if (btn.customId === `reorderThemeCancel-${userId}`) {
-          collector.stop('cancel');
-          await btn.update({
-            content: buildListText(view),
-            components: buildStep1Components(view, userId),
-          });
-          resolve();
-        }
-      });
+    const move = parseMove(
+      submitted.fields.getTextInputValue('fromPosition'),
+      submitted.fields.getTextInputValue('toPosition'),
+      themes.length,
+    );
 
-      collector.on('end', (_, reason) => {
-        if (reason !== 'save' && reason !== 'cancel') {
-          interaction
-            .editReply({ content: 'Timed out.', components: [] })
-            .catch(console.error);
-          exitLoop = true;
-          resolve();
-        }
-      });
-    });
+    if (!move.ok) {
+      notice = `Not moved. ${move.reason}`;
+      await interaction.editReply(render());
+      continue;
+    }
 
-    if (exitLoop) return;
+    try {
+      const state = getState();
+      const trackedName = themeNameText(themes[state.currentIndex]);
+      const reordered = applyMove(
+        themes,
+        state.currentIndex,
+        move.from,
+        move.to,
+      );
+
+      await saveThemes(reordered);
+      themes = await getThemes();
+
+      // The view starts at currentIndex, so moving something to the front
+      // changes which theme sits at that file position. Follow the theme that
+      // was current by name rather than letting the rotation jump.
+      const followed = themes.findIndex(
+        (t) => themeNameText(t) === trackedName,
+      );
+      if (followed >= 0 && followed !== state.currentIndex) {
+        await saveState({ currentIndex: followed });
+      }
+
+      notice = `Moved theme ${move.from + 1} to position ${move.to + 1}.`;
+      pageIndex = pageContaining(
+        buildRotatedView(themes, getState().currentIndex),
+        move.to + 1,
+      );
+    } catch (err) {
+      notice = `Failed to save the new order.\n> ${(err as Error).message}`;
+    }
+
+    await interaction.editReply(render());
   }
 };
