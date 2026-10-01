@@ -1,9 +1,7 @@
 import type { CommandHandler } from '../types';
 import { MessageFlags } from 'discord.js';
-import { getState } from '../state';
-import { rotateTheme, getThemeName, isRotationInProgress } from '../rotation';
+import { rotateTheme, isRotationInProgress } from '../rotation';
 import { requireAdmin } from './index';
-import { getThemes } from '../themes';
 
 export const rotateNow: CommandHandler = async (interaction, context) => {
   if (!(await requireAdmin(interaction))) return;
@@ -20,12 +18,11 @@ export const rotateNow: CommandHandler = async (interaction, context) => {
   const result = await rotateTheme(context.client, context.config);
 
   if (result.success) {
-    const themes = await getThemes();
-    const state = getState();
-    const prevIndex = (state.currentIndex - 1 + themes.length) % themes.length;
-    const currentTheme = themes[prevIndex];
+    // The name rotateTheme says it applied. This used to be re-derived from the
+    // saved index minus one, which stopped being right when the index came to
+    // mean the applied theme rather than the next one.
     await interaction.editReply({
-      content: `Theme rotated! New theme: \`${getThemeName(currentTheme)}\``,
+      content: `Theme rotated! New theme: \`${result.themeName ?? 'unknown theme'}\``,
     });
   } else {
     const reason = result.error ? `\n> ${result.error}` : '';
