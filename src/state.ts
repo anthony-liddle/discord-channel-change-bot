@@ -9,7 +9,22 @@ let currentState: State = { currentIndex: 0 };
 export async function loadState(): Promise<State> {
   try {
     const data = await fs.readFile(STATE_PATH, 'utf8');
-    currentState = JSON.parse(data) as State;
+    const parsed: unknown = JSON.parse(data);
+    if (isState(parsed)) {
+      currentState = { currentIndex: parsed.currentIndex };
+    } else {
+      // state.json is hand edited when the rotation is resynced, and JSON.parse
+      // accepts plenty that is not a position. Taken as is, {} gave a NaN index
+      // that failed the rotation every week, and null failed it and crashed
+      // startup. Starting fresh is what an unparseable file already does, and
+      // the line keeps the prefix docs/HOSTING.md tells a reader to look for.
+      console.warn(
+        'Warning: Could not parse state.json (currentIndex must be a whole ' +
+          `number from 0 up, but the file holds ${data.trim().slice(0, 120)}), ` +
+          'starting fresh',
+      );
+      currentState = { currentIndex: 0 };
+    }
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       currentState = { currentIndex: 0 };
@@ -19,6 +34,12 @@ export async function loadState(): Promise<State> {
     }
   }
   return currentState;
+}
+
+function isState(value: unknown): value is State {
+  if (typeof value !== 'object' || value === null) return false;
+  const index = (value as { currentIndex?: unknown }).currentIndex;
+  return typeof index === 'number' && Number.isInteger(index) && index >= 0;
 }
 
 /**
