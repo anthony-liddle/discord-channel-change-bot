@@ -31,6 +31,8 @@ jobs:
 
       - run: pnpm typecheck
 
-      - run: pnpm test
+      # The same tests as pnpm test, plus the coverage thresholds in
+      # vitest.config.ts, so untested new code fails here.
+      - run: pnpm test:coverage
 
       - run: pnpm build

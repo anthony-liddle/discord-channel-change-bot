@@ -15,6 +15,16 @@ export default defineConfig({
         'src/index.ts',
       ],
       reporter: ['text', 'html'],
+      // A ratchet, set from what the suite achieved when coverage was first
+      // measured, rounded down. Untested new code fails CI rather than
+      // quietly lowering the bar. Raise these when coverage rises; lowering
+      // them is a decision to make in review, not to slip through.
+      thresholds: {
+        statements: 96,
+        branches: 91,
+        functions: 96,
+        lines: 98,
+      },
     },
   },
 });

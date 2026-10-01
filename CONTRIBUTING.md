@@ -34,9 +34,9 @@ Feature suggestions are welcome! Please:
 ### Pull Requests
 
 1. **Fork the repository** and create your branch from `main`
-2. **Install dependencies**: `npm install`
+2. **Install dependencies**: `pnpm install`
 3. **Make your changes** following our coding standards
-4. **Test your changes**: `npm run build` should complete without errors
+4. **Test your changes**: `pnpm test:coverage` and `pnpm build` must both pass. See [Testing](#testing).
 5. **Commit your changes** with clear, descriptive messages
 6. **Push to your fork** and submit a pull request
 
@@ -122,13 +122,29 @@ Use clear, descriptive commit messages:
 
 ## Testing
 
-Currently, the project uses TypeScript compilation as the primary validation:
+Tests use [Vitest](https://vitest.dev) and live in `src/__tests__/`.
 
 ```bash
-npm run build
+pnpm test            # the suite
+pnpm test:coverage   # the suite plus the coverage thresholds CI enforces
+pnpm typecheck
+pnpm build
 ```
 
-Ensure the build completes without errors before submitting a PR.
+CI runs `pnpm test:coverage`, which fails if statement, branch, function or
+line coverage drops below the thresholds in `vitest.config.ts`. They are a
+ratchet: new code needs tests, and when coverage rises the thresholds should
+rise with it. The HTML report lands in `coverage/`.
+
+Coverage counts lines that ran, not whether anything checked them, so a test
+should name the bug it would catch. For a fix, write the test first and watch
+it fail. For a test of code that already works, break the code on purpose and
+confirm the test fails, then put it back.
+
+`src/index.ts` is excluded from coverage and must not be imported by a test:
+importing it logs in to Discord with whatever token `.env` holds. Keep it to
+wiring and put anything worth testing in a module that can be imported, as
+`src/dispatch.ts` is.
 
 ## Areas for Contribution
 
