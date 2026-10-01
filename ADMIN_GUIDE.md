@@ -56,7 +56,7 @@ After you submit, the bot tells you exactly what the channel will be renamed to,
 
 The new theme is added to the end of the rotation queue.
 
-**Names the bot will refuse:** a name that has no letters or numbers left after the rules above, such as one made only of emoji or only of punctuation. There would be nothing to rename the channel to, and the rotation would stop on that theme every week. Give it at least one letter or number. A name already used by another theme is refused too. That comparison is by the channel name the theme would produce, so "Cafe Night" and "Café Night" count as the same theme, and so do two names that differ only in capitals or spacing.
+**Names the bot will refuse:** a name that has no letters or numbers left after the rules above, such as one made only of emoji or only of punctuation. There would be nothing to rename the channel to, and the rotation would stop on that theme every week. Give it at least one letter or number. A name with a line break, a tab or another invisible control character in it is refused as well, because the name is posted as a one line heading and a line break would split it; the form's name box is single line, so this mostly comes from pasting. A name already used by another theme is refused too. That comparison is by the channel name the theme would produce, so "Cafe Night" and "Café Night" count as the same theme, and so do two names that differ only in capitals or spacing.
 
 ---
 

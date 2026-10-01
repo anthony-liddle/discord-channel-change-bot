@@ -332,6 +332,23 @@ describe('updateTheme validates before writing', () => {
   });
 });
 
+// A line break in a name splits the announcement heading in two.
+describe('the store refuses a name with a line break', () => {
+  it('addTheme refuses it without writing', async () => {
+    await expect(addTheme('Golden\nHour', 'msg')).rejects.toThrow(
+      'a line break',
+    );
+    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+
+  it('updateTheme refuses it without writing', async () => {
+    await expect(updateTheme(1, 'Golden\nHour', 'msg')).rejects.toThrow(
+      'a line break',
+    );
+    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+});
+
 // The announcement puts "# <name>\n" above the message, which costs up to 98
 // characters of Discord's 2000, so the store caps a message at 1902. Literal
 // lengths on purpose: a test written against the constant passes whatever the

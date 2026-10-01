@@ -104,7 +104,7 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    ```
 
    Each theme has:
-   - `name`: Up to 95 characters. The channel is renamed to a normalized form of it (lowercased, spaces become hyphens, accents are folded, and anything else that is not a letter, number, hyphen or underscore is dropped). The announcement shows it exactly as written.
+   - `name`: Up to 95 characters, on one line: line breaks, tabs and other control characters are refused, since the name is posted as a heading. The channel is renamed to a normalized form of it (lowercased, spaces become hyphens, accents are folded, and anything else that is not a letter, number, hyphen or underscore is dropped). The announcement shows it exactly as written.
    - `message`: Optional, up to 1902 characters, supports Discord markdown. Posted under the name when this theme becomes active.
 
    When a theme becomes active the bot posts its name as a heading, with the message underneath:

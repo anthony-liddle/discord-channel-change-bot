@@ -151,6 +151,55 @@ describe('validateThemeName rejects values a hand-edited file can produce', () =
   });
 });
 
+// ─── line breaks and control characters ───────────────────────────────────────
+
+// The name is posted as a "# " heading. A line break inside it ends the heading
+// and drops the rest of the name into the body, and nothing caught it, because
+// whitespace normalizes into the channel name just fine. The name field in the
+// modals is single line, so this arrives by hand edit or by paste.
+describe('validateThemeName refuses line breaks and control characters', () => {
+  const REFUSED: [string, string, string][] = [
+    ['Weekly theme\npottery', 'a line feed', 'a line break'],
+    ['Weekly theme\r\npottery', 'a Windows line ending', 'a line break'],
+    ['Weekly theme\rpottery', 'a carriage return', 'a line break'],
+    ['Weekly theme pottery', 'a Unicode line separator', 'a line break'],
+    ['Weekly theme pottery', 'a Unicode paragraph separator', 'a line break'],
+    ['Weekly theme\u0085pottery', 'a C1 next line', 'a line break'],
+    ['Weekly\ttheme pottery', 'a tab', 'a tab'],
+    ['Weekly theme\u0000pottery', 'a NUL', 'U+0000'],
+    ['Weekly theme\u007fpottery', 'a DEL', 'U+007F'],
+    ['Weekly theme\u001bpottery', 'an escape', 'U+001B'],
+  ];
+
+  for (const [name, what, named] of REFUSED) {
+    it(`refuses a name containing ${what}, naming it as ${named}`, () => {
+      expect(() => validateThemeName(name)).toThrow(named);
+    });
+  }
+
+  // The character is invisible, so the error has to say where it is.
+  it('says where the character is, counting from 1', () => {
+    expect(() => validateThemeName('Weekly theme\npottery')).toThrow(
+      /character 13/,
+    );
+  });
+
+  // Surrounding whitespace, line breaks included, has always been trimmed off
+  // before storing. The check runs on what would actually be stored.
+  it('still accepts a name whose only line breaks are around it', () => {
+    expect(validateThemeName('\n\tWeekly theme pottery\r\n')).toBe(
+      'Weekly theme pottery',
+    );
+  });
+
+  // A zero width joiner is a format character, not a control character, and
+  // emoji sequences depend on it.
+  it('still accepts an emoji sequence joined with a zero width joiner', () => {
+    const name = 'Weekly theme \u{1F469}‍\u{1F373} cooking';
+    expect(validateThemeName(name)).toBe(name);
+  });
+});
+
 // ─── trimming ─────────────────────────────────────────────────────────────────
 
 describe('validateThemeName trims', () => {

@@ -80,6 +80,21 @@ export function validateThemeName(name: unknown): string {
     throw new Error('Theme name cannot be empty.');
   }
 
+  // The name is posted as a "# " heading, and a line break inside it ends the
+  // heading and drops the rest of the name into the body. Whitespace of every
+  // kind normalizes into the channel name fine, so nothing else catches it.
+  // Format characters such as the zero width joiner are not in these classes,
+  // which matters because emoji sequences depend on them.
+  const control = /[\p{Cc}\p{Zl}\p{Zp}]/u.exec(trimmed);
+  if (control) {
+    throw new Error(
+      `Theme name contains ${describeControlCharacter(control[0])} at ` +
+        `character ${control.index + 1}. A name is posted as a one line ` +
+        'heading, so it cannot contain line breaks, tabs or other control ' +
+        'characters.',
+    );
+  }
+
   if (trimmed.length > MAX_THEME_NAME) {
     throw new Error(
       `Theme name is ${trimmed.length} characters. It can be at most ` +
@@ -288,6 +303,25 @@ function displayName(rawName: unknown): string {
 
 function trimForReply(text: string): string {
   return text.length <= 40 ? text : `${text.slice(0, 39)}…`;
+}
+
+/** Every one of these is invisible, so the error has to say which it is. */
+function describeControlCharacter(char: string): string {
+  switch (char) {
+    case '\n':
+    case '\r':
+    case '\u0085':
+    case ' ':
+    case ' ':
+      return 'a line break';
+    case '\t':
+      return 'a tab';
+    default:
+      return (
+        'an invisible control character ' +
+        `(U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')})`
+      );
+  }
 }
 
 function describeType(value: unknown): string {
