@@ -167,6 +167,12 @@ describe('the scheduled rotation and rotate-now post the same announcement', () 
   ];
   const expected = '# Weekly theme pottery\nShow us what you threw this week';
 
+  // What reaches channel.send: the text, with every mention type switched off.
+  const posted = (content: string) => ({
+    content,
+    allowedMentions: { parse: [] },
+  });
+
   // No adminChannelId, so the scheduled path's success notice has nowhere to
   // go and the only send is the announcement.
   const config: Config = { channelId: 'theme-channel' };
@@ -223,11 +229,11 @@ describe('the scheduled rotation and rotate-now post the same announcement', () 
   });
 
   it('posts the heading and message once from the scheduled rotation', async () => {
-    expect(await postedByScheduled()).toEqual([[expected]]);
+    expect(await postedByScheduled()).toEqual([[posted(expected)]]);
   });
 
   it('posts the heading and message once from rotate-now', async () => {
-    expect(await postedByRotateNow()).toEqual([[expected]]);
+    expect(await postedByRotateNow()).toEqual([[posted(expected)]]);
   });
 
   it('posts identical content from both paths for the same theme', async () => {
@@ -245,12 +251,16 @@ describe('the scheduled rotation and rotate-now post the same announcement', () 
 
     it('posts the heading alone from the scheduled rotation', async () => {
       vi.mocked(getThemes).mockResolvedValue(blank);
-      expect(await postedByScheduled()).toEqual([['# Weekly theme pottery']]);
+      expect(await postedByScheduled()).toEqual([
+        [posted('# Weekly theme pottery')],
+      ]);
     });
 
     it('posts the heading alone from rotate-now', async () => {
       vi.mocked(getThemes).mockResolvedValue(blank);
-      expect(await postedByRotateNow()).toEqual([['# Weekly theme pottery']]);
+      expect(await postedByRotateNow()).toEqual([
+        [posted('# Weekly theme pottery')],
+      ]);
     });
 
     // The oldest data format: a bare string, which never had a message.
@@ -259,7 +269,38 @@ describe('the scheduled rotation and rotate-now post the same announcement', () 
         'Weekly theme origami',
         'Weekly theme pottery',
       ]);
-      expect(await postedByScheduled()).toEqual([['# Weekly theme pottery']]);
+      expect(await postedByScheduled()).toEqual([
+        [posted('# Weekly theme pottery')],
+      ]);
+    });
+  });
+
+  // A name used to become only a channel slug, where @everyone is inert. In a
+  // post it is not. Pinging anyone from an announcement has to be a decision
+  // made in code, never a consequence of what was typed into a modal.
+  describe('for a theme whose name or message carries a mention', () => {
+    const pinging: ThemeEntry[] = [
+      { name: 'Weekly theme origami', message: 'Fold something' },
+      {
+        name: 'Weekly theme @everyone',
+        message: 'Over to <@&123456789012345678> and @here',
+      },
+    ];
+    const text =
+      '# Weekly theme @everyone\nOver to <@&123456789012345678> and @here';
+
+    it('posts it with every mention disabled from the scheduled rotation', async () => {
+      vi.mocked(getThemes).mockResolvedValue(pinging);
+      expect(await postedByScheduled()).toEqual([
+        [{ content: text, allowedMentions: { parse: [] } }],
+      ]);
+    });
+
+    it('posts it with every mention disabled from rotate-now', async () => {
+      vi.mocked(getThemes).mockResolvedValue(pinging);
+      expect(await postedByRotateNow()).toEqual([
+        [{ content: text, allowedMentions: { parse: [] } }],
+      ]);
     });
   });
 });

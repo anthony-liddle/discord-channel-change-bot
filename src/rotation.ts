@@ -5,6 +5,7 @@ import { getState, setStateIndex } from './state';
 import { getThemes } from './themes';
 import { normalizeChannelName } from './channel-name';
 import { composeAnnouncement } from './announcement';
+import { NO_MENTIONS } from './client-options';
 
 let isRotating = false;
 
@@ -179,7 +180,12 @@ export async function rotateTheme(
     try {
       // The one place an announcement is posted. The scheduled rotation and
       // rotate-now both arrive here, so they cannot compose it differently.
-      await channel.send(composeAnnouncement(getThemeName(theme), message));
+      // Mentions are switched off here as well as on the client, because this
+      // is the one post the whole channel sees every week.
+      await channel.send({
+        content: composeAnnouncement(getThemeName(theme), message),
+        allowedMentions: NO_MENTIONS,
+      });
       console.log('Theme announcement message sent');
     } catch (msgErr) {
       console.error(

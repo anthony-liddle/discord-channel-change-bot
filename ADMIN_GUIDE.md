@@ -17,6 +17,8 @@ The heading is there so that anyone scrolling back can tell which theme each ann
 
 Discord formatting in a name works inside the heading the same way it works in a message, so `Weekly theme *stars*` shows "stars" in italics. Check the result in the next announcement if you use it.
 
+**Mentions never notify anyone.** An `@everyone`, `@here`, role or user mention in a theme name or message still shows in the post, but nobody is pinged. That holds for everything the bot posts, not just announcements. If a theme should ever ping a role, ask the bot owner: it has to be built in as a deliberate setting, not typed into a form.
+
 A theme with no message posts its name heading on its own. The forms always ask for a message, so this normally only happens to an entry someone has added to `themes.json` by hand.
 
 ## Commands
