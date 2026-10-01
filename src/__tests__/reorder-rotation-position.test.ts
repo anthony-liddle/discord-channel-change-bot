@@ -15,8 +15,8 @@ import type { ThemeEntry } from '../types';
  * load it and jump the rotation.
  *
  * The real state module runs here, with only the file system mocked. The
- * reorder flow tests mock saveState as if it also updated getState, which the
- * real one never did, so they could not see a disk-only write.
+ * reorder flow tests used to mock saveState as if it also updated getState,
+ * which the real one never did, so they could not see a disk-only write.
  */
 
 let store: ThemeEntry[] = [];
