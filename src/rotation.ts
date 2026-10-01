@@ -4,6 +4,7 @@ import type { Config, ThemeEntry, UpcomingTheme } from './types';
 import { getState, setStateIndex } from './state';
 import { getThemes } from './themes';
 import { normalizeChannelName } from './channel-name';
+import { composeAnnouncement } from './announcement';
 
 let isRotating = false;
 
@@ -182,7 +183,9 @@ export async function rotateTheme(
 
     if (message && typeof message === 'string') {
       try {
-        await channel.send(message);
+        // The one place an announcement is posted. The scheduled rotation and
+        // rotate-now both arrive here, so they cannot compose it differently.
+        await channel.send(composeAnnouncement(getThemeName(theme), message));
         console.log('Theme announcement message sent');
       } catch (msgErr) {
         console.error(

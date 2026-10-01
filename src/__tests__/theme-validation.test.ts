@@ -123,12 +123,13 @@ describe('validateThemeMessage length', () => {
     );
   });
 
-  // Over 2000 the announcement is rejected by the API, and rotateTheme swallows
-  // that failure, so the rename lands and the message silently never posts.
+  // Over the cap, the heading plus the message would pass 2000, the API would
+  // reject the announcement, and rotateTheme swallows that failure, so the
+  // rename lands and the post silently never appears.
   it(`rejects a message of ${MAX_THEME_MESSAGE + 1} characters`, () => {
     expect(() =>
       validateThemeMessage('a'.repeat(MAX_THEME_MESSAGE + 1)),
-    ).toThrow(/2000 characters/);
+    ).toThrow(/1902 characters/);
   });
 });
 

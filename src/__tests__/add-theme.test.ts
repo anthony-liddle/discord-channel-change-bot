@@ -9,6 +9,7 @@ vi.mock('../themes', () => ({
 import { addTheme } from '../themes';
 import { addThemeCmd } from '../commands/add-theme';
 import { MAX_THEME_MESSAGE, MAX_THEME_NAME } from '../theme-validation';
+import { composeAnnouncement } from '../announcement';
 
 // Same client-wide collector behaviour as edit-theme. Every live modal
 // collector is offered every submit and decides for itself whether to take it.
@@ -99,6 +100,23 @@ describe('add-theme modal input limits', () => {
     await settle();
 
     expect(modalInputs(a).channelMessage.max_length).toBe(MAX_THEME_MESSAGE);
+  });
+
+  // The two limits together, read off the modal Discord actually renders. The
+  // most the form lets through has to fit in one post once the heading goes on
+  // top, and not leave room unused.
+  it('lets through at most what fits in one announcement', async () => {
+    const a = makeInvocation('inv-A');
+    void addThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
+    await settle();
+
+    const { themeName, channelMessage } = modalInputs(a);
+    const longest = composeAnnouncement(
+      'n'.repeat(themeName.max_length!),
+      'm'.repeat(channelMessage.max_length!),
+    );
+
+    expect(longest).toHaveLength(2000);
   });
 });
 

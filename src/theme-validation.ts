@@ -1,4 +1,9 @@
 import { canBecomeChannelName, normalizeChannelName } from './channel-name';
+import {
+  HEADING_MARKER,
+  HEADING_SEPARATOR,
+  MAX_ANNOUNCEMENT,
+} from './announcement';
 
 /**
  * Validation for everything that can be written into themes.json.
@@ -45,11 +50,22 @@ export const POSITION_PREFIX_WIDTH = `${MAX_ASSUMED_THEMES}. `.length;
 export const MAX_THEME_NAME = 100 - POSITION_PREFIX_WIDTH;
 
 /**
- * Discord rejects message content over 2000 characters. rotateTheme catches and
- * logs a failed announcement and carries on, so an oversized message renames
- * the channel and then silently posts nothing.
+ * The announcement is the message under a "# <name>" heading, and Discord
+ * rejects a post over 2000 characters. rotateTheme catches and logs a rejected
+ * post and carries on, so an oversized one renames the channel and then
+ * silently posts nothing.
+ *
+ * The message therefore gets what is left after the heading for the longest
+ * legal name: 2000 - 2 for "# " - 95 for the name - 1 for the newline = 1902.
+ * Capping here rather than trimming the post is deliberate. A cap is enforced in
+ * the modal, where the admin sees it; trimming at post time would cut community
+ * writing where nobody sees it happen.
  */
-export const MAX_THEME_MESSAGE = 2000;
+export const MAX_THEME_MESSAGE =
+  MAX_ANNOUNCEMENT -
+  HEADING_MARKER.length -
+  MAX_THEME_NAME -
+  HEADING_SEPARATOR.length;
 
 export function validateThemeName(name: unknown): string {
   if (typeof name !== 'string') {
@@ -96,8 +112,10 @@ export function validateThemeMessage(message: unknown): string {
 
   if (message.length > MAX_THEME_MESSAGE) {
     throw new Error(
-      `Theme message is ${message.length} characters. Discord will not post ` +
-        `more than ${MAX_THEME_MESSAGE} characters, so the announcement would ` +
+      `Theme message is ${message.length} characters. It can be at most ` +
+        `${MAX_THEME_MESSAGE} characters, which leaves room for the theme name ` +
+        `the announcement puts above it. Discord will not post more than ` +
+        `${MAX_ANNOUNCEMENT} characters, so a longer announcement would ` +
         'silently never appear.',
     );
   }
