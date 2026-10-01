@@ -1,6 +1,7 @@
 import { ThemeEntry, Themes } from './types';
 import fs from 'fs/promises';
 import { dataPath } from './paths';
+import { followDeletedTheme } from './state';
 import {
   duplicateKey,
   validateThemeMessage,
@@ -125,6 +126,10 @@ export async function deleteTheme(index: number): Promise<void> {
   const tempPath = `${THEMES_PATH}.tmp`;
   await fs.writeFile(tempPath, JSON.stringify({ themes: updated }));
   await fs.rename(tempPath, THEMES_PATH);
+
+  // Every index after the deleted one just shifted, the rotation position
+  // included.
+  await followDeletedTheme(index, updated.length);
 }
 
 export async function updateTheme(
