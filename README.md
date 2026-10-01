@@ -9,7 +9,7 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
 ## Features
 
 - Automatic weekly channel renaming on a cron schedule
-- Custom announcement message per theme (posted when rotation occurs)
+- Announcement whenever the channel is renamed, headed by the theme's name, with an optional message per theme
 - Persists state across restarts (won't reset to the first theme)
 - Slash commands to preview themes and trigger manual rotation
 - Hot-reload config without restarting
@@ -33,7 +33,7 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
 2. Select scopes: `bot`, `applications.commands`
 3. Select bot permissions:
    - `Manage Channels` (required for renaming)
-   - `Send Messages` (required for announcement messages)
+   - `Send Messages` (required for the announcement posted when the channel is renamed)
    - `View Channels` (required to see the channel)
 4. Copy the generated URL and open it in your browser
 5. Select your server and authorize the bot
@@ -104,8 +104,17 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    ```
 
    Each theme has:
-   - `name`: The channel name (Discord channel naming rules apply - lowercase, no spaces)
-   - `message`: The announcement posted when this theme becomes active (supports Discord markdown)
+   - `name`: Up to 95 characters. The channel is renamed to a normalized form of it (lowercased, spaces become hyphens, accents are folded, and anything else that is not a letter, number, hyphen or underscore is dropped). The announcement shows it exactly as written.
+   - `message`: Optional, up to 1902 characters, supports Discord markdown. Posted under the name when this theme becomes active.
+
+   When a theme becomes active the bot posts its name as a heading, with the message underneath:
+
+   ```
+   # weekly-movies
+   This week's theme is **Movies**! Share your favorites!
+   ```
+
+   The message limit is 1902 rather than Discord's 2000 because the heading shares the post: `# ` plus a name of up to 95 characters plus a line break is 98, and 2000 minus 98 is 1902. A theme with no message posts the heading alone.
 
    > **Note:** You can also add themes at runtime using the `/add-theme` slash command, which writes to this file automatically. Manual edits to `themes.json` take effect after running `/reload-config`.
 
