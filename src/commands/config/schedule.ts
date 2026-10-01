@@ -2,7 +2,7 @@ import type { CommandHandler } from '../../types';
 import { requireAdmin } from '../index';
 import { getConfig, saveConfig } from '../../config';
 import { scheduleCronJob } from '../../scheduler';
-import { rotateTheme } from '../../rotation';
+import { makeScheduledRotation } from '../../scheduled-rotation';
 import {
   ActionRowBuilder,
   ComponentType,
@@ -151,14 +151,14 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
     const newCron = `0 ${selectedHour} * * ${selectedDay}`;
 
     await saveConfig({ ...config, schedule: newCron });
-    scheduleCronJob(newCron, timezone, async () => {
-      const result = await rotateTheme(context.client, getConfig());
-      if (!result.success) {
-        console.error(
-          `Scheduled rotation failed: ${result.error ?? 'unknown error'}`,
-        );
-      }
-    });
+    // The same callback index.ts and reload-config schedule. An inline copy
+    // here used to skip the admin alerts, so changing the schedule turned
+    // them off until the next restart.
+    scheduleCronJob(
+      newCron,
+      timezone,
+      makeScheduledRotation(context.client, getConfig),
+    );
 
     await hourInteraction.update({
       content: `✅ Schedule updated to: ${formatSchedule(newCron, timezone)}`,
