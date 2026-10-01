@@ -108,6 +108,8 @@ Because each move saves as it happens, there is no cancel-everything button. If 
 
 Immediately rotates to the next theme without waiting for the scheduled time. Use this if you want to kick off a new theme early or test that things are working. It posts the same announcement the scheduled rotation would, and the bot will confirm which theme was applied.
 
+If the channel has already been renamed twice in the last ten minutes, by the bot or by hand, Discord makes the rename wait its turn. The reply says so and roughly how long, then updates by itself when the rotation finishes, up to ten minutes later. There is no need to run it again; doing so only tells you a rotation is already in progress.
+
 ---
 
 ### `/theme-bot reload-config`
@@ -148,7 +150,7 @@ The current schedule is pre-selected so you can see what's configured. The chang
 - **Rotation happens automatically** on the configured schedule. You don't need to do anything for the weekly rotation to run.
 - **Theme order** — themes rotate in the order they appear in the list. Use `/theme-bot themes` to see what's coming up, and `/theme-bot reorder-themes` to change the order.
 - **The bot needs the right permissions** — if it ever stops renaming the channel, check that it still has `Manage Channels` and `Send Messages` permissions in that channel.
-- **Discord rate limits channel renames** to 2 per 10 minutes. The weekly schedule respects this, but avoid using `/theme-bot rotate-now` in quick succession.
+- **Discord rate limits channel renames** to 2 per 10 minutes, and renames done by hand count. The weekly schedule respects this, but avoid using `/theme-bot rotate-now` in quick succession. If you do run into it, see `rotate-now` above: the bot waits and finishes by itself.
 - **Theme name and message limits** are 95 characters for a name and 1902 for a message. The forms stop you going over rather than failing afterwards. The name limit leaves room for the position number shown in front of each theme, both in the autocomplete suggestions and in the `reorder-themes` list. The message limit leaves room for the name heading: Discord will not post more than 2000 characters in one message, and the heading can take up to 98.
 - **If a scheduled rotation fails**, the bot posts about it in the admin channel, if the bot owner has configured one. A failed rotation does not skip the theme: the channel keeps its old name and the same theme is tried again on the next run, so nothing is lost from the queue.
 - **The bot also posts a line on every successful rotation**, so the admin channel gets a message every week either way. That is deliberate: it means silence is evidence that something is wrong rather than something you have to interpret, and it re-proves every week that the alert channel still works. The bot owner can turn the weekly success line off without turning failure alerts off with it.
