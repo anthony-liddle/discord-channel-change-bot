@@ -9,7 +9,15 @@ vi.mock('fs/promises', () => ({
 }));
 
 import fsp from 'fs/promises';
-import { addTheme, deleteTheme, updateTheme, reloadThemes } from '../themes';
+import {
+  addTheme,
+  deleteTheme,
+  getThemes,
+  saveThemes,
+  updateTheme,
+  reloadThemes,
+  THEMES_PATH,
+} from '../themes';
 import { MAX_THEME_MESSAGE, MAX_THEME_NAME } from '../theme-validation';
 
 const baseThemes = [
@@ -378,5 +386,86 @@ describe('the store leaves room in the message for the announcement heading', ()
       updateTheme(1, 'Golden Hour', 'a'.repeat(1903)),
     ).rejects.toThrow(/1902 characters/);
     expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+});
+
+// ─── loading and saving the whole list ────────────────────────────────────────
+
+// A themes.json that will not load becomes an empty list rather than a crash.
+// The rotation then fails with "No themes configured", which the admin alert
+// carries, and reload-config attaches the raw file so it can be repaired.
+describe('loading themes.json', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  const names = (list: unknown[]) =>
+    list.map((t) => (t as { name: string }).name);
+
+  it('loads the list in file order', async () => {
+    expect(names(await reloadThemes())).toEqual([
+      'Monochrome',
+      'Macro',
+      'Street',
+    ]);
+  });
+
+  it('loads an unparseable file as an empty list, and says so', async () => {
+    vi.mocked(fsp.readFile).mockResolvedValue('{"themes": [' as never);
+
+    expect(await reloadThemes()).toEqual([]);
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Could not retrieve themes'),
+    );
+  });
+
+  it('loads a missing file as an empty list', async () => {
+    vi.mocked(fsp.readFile).mockRejectedValue(
+      Object.assign(new Error('no such file'), { code: 'ENOENT' }),
+    );
+
+    expect(await reloadThemes()).toEqual([]);
+  });
+
+  it('loads a file whose themes is not a list as an empty list', async () => {
+    vi.mocked(fsp.readFile).mockResolvedValue('{"themes": {}}' as never);
+
+    expect(await reloadThemes()).toEqual([]);
+  });
+
+  it('reads the file once and serves later reads from memory', async () => {
+    vi.mocked(fsp.readFile).mockClear();
+
+    await getThemes();
+    await getThemes();
+
+    expect(fsp.readFile).not.toHaveBeenCalled();
+  });
+});
+
+describe('saveThemes', () => {
+  // Written to a temporary file and renamed into place, so a crash mid-write
+  // leaves the previous themes.json whole: it is the only copy of the
+  // community's writing.
+  it('writes the list atomically through a temporary file', async () => {
+    const list = [{ name: 'Golden Hour', message: 'Shoot at sunset.' }];
+
+    await saveThemes(list);
+
+    expect(fsp.writeFile).toHaveBeenCalledWith(
+      `${THEMES_PATH}.tmp`,
+      JSON.stringify({ themes: list }),
+    );
+    expect(fsp.rename).toHaveBeenCalledWith(`${THEMES_PATH}.tmp`, THEMES_PATH);
+  });
+
+  it('serves the saved list without reading the file back', async () => {
+    const list = [{ name: 'Golden Hour', message: 'Shoot at sunset.' }];
+    vi.mocked(fsp.readFile).mockClear();
+
+    await saveThemes(list);
+
+    expect(await getThemes()).toEqual(list);
+    expect(fsp.readFile).not.toHaveBeenCalled();
   });
 });
