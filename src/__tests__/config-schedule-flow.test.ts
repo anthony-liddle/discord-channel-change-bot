@@ -234,3 +234,40 @@ describe('when nothing is picked', () => {
     expect(scheduleCronJob).not.toHaveBeenCalled();
   });
 });
+
+// Only waiting for a pick can time out. Anything that fails after a pick
+// arrived used to be reported as a timeout too, so a failed save told the
+// admin to try again faster rather than what broke.
+describe('a failure after the pick is not reported as a timeout', () => {
+  it('says the save failed, with the reason, and does not reschedule', async () => {
+    vi.mocked(saveConfig).mockRejectedValue(
+      new Error('EACCES: permission denied'),
+    );
+    const { interaction, hourPick } = picker('1', '8');
+
+    await run(interaction);
+
+    const said = contentOf(hourPick.update);
+    expect(said).toContain('EACCES: permission denied');
+    expect(said).not.toMatch(/timed out/i);
+    expect(scheduleCronJob).not.toHaveBeenCalled();
+    expect(interaction.editReply).not.toHaveBeenCalled();
+  });
+
+  it('lets a failed confirmation through to the error report', async () => {
+    const { interaction, hourPick } = picker('1', '8');
+    hourPick.update.mockRejectedValue(new Error('Unknown interaction'));
+
+    await expect(run(interaction)).rejects.toThrow('Unknown interaction');
+    expect(saveConfig).toHaveBeenCalled();
+    expect(interaction.editReply).not.toHaveBeenCalled();
+  });
+
+  it('lets a failed step-two prompt through to the error report', async () => {
+    const { interaction, dayPick } = picker('1', '8');
+    dayPick.update.mockRejectedValue(new Error('Unknown interaction'));
+
+    await expect(run(interaction)).rejects.toThrow('Unknown interaction');
+    expect(interaction.editReply).not.toHaveBeenCalled();
+  });
+});

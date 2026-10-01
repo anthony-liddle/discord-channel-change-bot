@@ -3,12 +3,15 @@ import { requireAdmin } from '../index';
 import { getConfig, saveConfig } from '../../config';
 import { scheduleCronJob } from '../../scheduler';
 import { makeScheduledRotation } from '../../scheduled-rotation';
+import { formatHandlerError } from '../../interaction-errors';
 import {
   ActionRowBuilder,
   ComponentType,
   MessageFlags,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  type Message,
+  type StringSelectMenuInteraction,
 } from 'discord.js';
 
 const DAYS = [
@@ -95,61 +98,58 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
     fetchReply: true,
   });
 
-  let selectedDay: string;
-
-  try {
-    const dayInteraction = await response.awaitMessageComponent({
-      componentType: ComponentType.StringSelect,
-      filter: (i) =>
-        i.customId === `config-schedule-day:${interaction.user.id}`,
-      time: 5 * 60 * 1000,
-    });
-
-    selectedDay = dayInteraction.values[0];
-    const dayLabel = DAYS.find((d) => d.value === selectedDay)!.label;
-
-    const hourMenu = new StringSelectMenuBuilder()
-      .setCustomId(`config-schedule-hour:${interaction.user.id}`)
-      .setPlaceholder('Select a time')
-      .addOptions(
-        HOURS.map((h) =>
-          new StringSelectMenuOptionBuilder()
-            .setLabel(h.label)
-            .setValue(h.value)
-            .setDefault(currentParsed?.hour === h.value),
-        ),
-      );
-
-    await dayInteraction.update({
-      content: [
-        '**Configure Rotation Schedule**',
-        `Day: **${dayLabel}** ✓`,
-        '',
-        '**Step 2 of 2:** Select the time:',
-      ].join('\n'),
-      components: [
-        new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(hourMenu),
-      ],
-    });
-  } catch {
-    await interaction.editReply({
-      content: 'Schedule configuration timed out.',
-      components: [],
-    });
+  // Only waiting for a pick can time out, so only the waits are caught as
+  // timeouts. Anything that fails after a pick arrives says what failed, or
+  // reaches the dispatch error report, rather than telling the admin they were
+  // too slow.
+  const dayInteraction = await awaitPick(
+    response,
+    `config-schedule-day:${interaction.user.id}`,
+  );
+  if (!dayInteraction) {
+    await interaction.editReply(TIMED_OUT);
     return;
   }
 
+  const selectedDay = dayInteraction.values[0];
+  const dayLabel = DAYS.find((d) => d.value === selectedDay)!.label;
+
+  const hourMenu = new StringSelectMenuBuilder()
+    .setCustomId(`config-schedule-hour:${interaction.user.id}`)
+    .setPlaceholder('Select a time')
+    .addOptions(
+      HOURS.map((h) =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(h.label)
+          .setValue(h.value)
+          .setDefault(currentParsed?.hour === h.value),
+      ),
+    );
+
+  await dayInteraction.update({
+    content: [
+      '**Configure Rotation Schedule**',
+      `Day: **${dayLabel}** ✓`,
+      '',
+      '**Step 2 of 2:** Select the time:',
+    ].join('\n'),
+    components: [
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(hourMenu),
+    ],
+  });
+
+  const hourInteraction = await awaitPick(
+    response,
+    `config-schedule-hour:${interaction.user.id}`,
+  );
+  if (!hourInteraction) {
+    await interaction.editReply(TIMED_OUT);
+    return;
+  }
+
+  const newCron = `0 ${hourInteraction.values[0]} * * ${selectedDay}`;
+
   try {
-    const hourInteraction = await response.awaitMessageComponent({
-      componentType: ComponentType.StringSelect,
-      filter: (i) =>
-        i.customId === `config-schedule-hour:${interaction.user.id}`,
-      time: 5 * 60 * 1000,
-    });
-
-    const selectedHour = hourInteraction.values[0];
-    const newCron = `0 ${selectedHour} * * ${selectedDay}`;
-
     await saveConfig({ ...config, schedule: newCron });
     // The same callback index.ts and reload-config schedule. An inline copy
     // here used to skip the admin alerts, so changing the schedule turned
@@ -159,15 +159,37 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
       timezone,
       makeScheduledRotation(context.client, getConfig),
     );
-
+  } catch (err) {
     await hourInteraction.update({
-      content: `✅ Schedule updated to: ${formatSchedule(newCron, timezone)}`,
+      content: `Failed to update the schedule.\n> ${formatHandlerError(err)}`,
       components: [],
+    });
+    return;
+  }
+
+  await hourInteraction.update({
+    content: `✅ Schedule updated to: ${formatSchedule(newCron, timezone)}`,
+    components: [],
+  });
+};
+
+const TIMED_OUT = {
+  content: 'Schedule configuration timed out.',
+  components: [],
+};
+
+/** The pick, or null if nobody picked in time. */
+async function awaitPick(
+  response: Message,
+  customId: string,
+): Promise<StringSelectMenuInteraction | null> {
+  try {
+    return await response.awaitMessageComponent({
+      componentType: ComponentType.StringSelect,
+      filter: (i) => i.customId === customId,
+      time: 5 * 60 * 1000,
     });
   } catch {
-    await interaction.editReply({
-      content: 'Schedule configuration timed out.',
-      components: [],
-    });
+    return null;
   }
-};
+}
