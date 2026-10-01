@@ -234,8 +234,11 @@ channel, search `from:` and pick the bot, and the announcements come back in
 order.
 
 **None of this is blocking.** `message` is optional in the data format. A theme
-with an empty message renames the channel and posts nothing, which fails safe.
-So you can cut over with a blank and fill it in later. Once PR #55 lands,
+with an empty message renames the channel and posts the theme's name as a
+heading on its own, with nothing under it. That still fails safe: the rotation
+succeeds and nothing wrong is posted. It is not silent, though. Members see the
+bare name in the channel that week. So you can cut over with a blank and fill it
+in later, knowing the blank shows until you do. Once PR #55 lands,
 `/theme-bot edit-theme` works and you can do it from inside Discord without
 touching the file again.
 
@@ -455,7 +458,8 @@ Then edit each one.
 **`themes.json`.** Fourteen entries, already deduplicated and in rotation order.
 Fill in the `message` fields from channel history per
 [section 3.3](#33-the-announcement-messages). An empty message means the rename
-happens and nothing is posted, so blanks are safe but silent.
+happens and the theme's name is posted as a heading with nothing under it, so
+blanks are safe but visible.
 
 **`config.json`.** Three fields:
 

@@ -14,6 +14,7 @@ import { getThemes, updateTheme } from '../themes';
 import { editThemeCmd } from '../commands/edit-theme';
 import { encodeThemeChoice } from '../commands/theme-autocomplete';
 import { MAX_THEME_MESSAGE, MAX_THEME_NAME } from '../theme-validation';
+import { composeAnnouncement } from '../announcement';
 
 // awaitModalSubmit builds an InteractionCollector with no message, channel or
 // guild, so it listens client-wide and filters only on interaction type plus
@@ -151,6 +152,22 @@ describe('edit-theme modal input limits', () => {
     await settle();
 
     expect(modalInputs(a).channelMessage.max_length).toBe(MAX_THEME_MESSAGE);
+  });
+
+  // Same check as add-theme, read off the rendered modal: the most the form
+  // lets through has to fit in one post once the heading goes on top.
+  it('lets through at most what fits in one announcement', async () => {
+    const a = makeInvocation('inv-A', pick(themes, 0));
+    void editThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
+    await settle();
+
+    const { themeName, channelMessage } = modalInputs(a);
+    const longest = composeAnnouncement(
+      'n'.repeat(themeName.max_length!),
+      'm'.repeat(channelMessage.max_length!),
+    );
+
+    expect(longest).toHaveLength(2000);
   });
 });
 

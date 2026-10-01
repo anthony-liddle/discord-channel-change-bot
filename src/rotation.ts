@@ -4,6 +4,8 @@ import type { Config, ThemeEntry, UpcomingTheme } from './types';
 import { getState, setStateIndex } from './state';
 import { getThemes } from './themes';
 import { normalizeChannelName } from './channel-name';
+import { composeAnnouncement } from './announcement';
+import { NO_MENTIONS } from './client-options';
 
 let isRotating = false;
 
@@ -72,14 +74,9 @@ export async function validatePermissions(
       missingPerms.push('Manage Channels');
     }
 
-    const themes = await getThemes();
-    const hasMessageThemes = themes.some(
-      (t) => typeof t === 'object' && typeof t.message === 'string',
-    );
-    if (
-      hasMessageThemes &&
-      !permissions.has(PermissionFlagsBits.SendMessages)
-    ) {
+    // Unconditional: every rotation that renames the channel posts at least
+    // the theme's name, including for a theme with no message.
+    if (!permissions.has(PermissionFlagsBits.SendMessages)) {
       missingPerms.push('Send Messages (needed for announcements)');
     }
 
@@ -180,15 +177,20 @@ export async function rotateTheme(
     await channel.setName(newName, 'Weekly theme rotation');
     console.log(`Channel renamed to: ${newName}`);
 
-    if (message && typeof message === 'string') {
-      try {
-        await channel.send(message);
-        console.log('Theme announcement message sent');
-      } catch (msgErr) {
-        console.error(
-          `ERROR sending announcement: ${describeDiscordError(msgErr)}`,
-        );
-      }
+    try {
+      // The one place an announcement is posted. The scheduled rotation and
+      // rotate-now both arrive here, so they cannot compose it differently.
+      // Mentions are switched off here as well as on the client, because this
+      // is the one post the whole channel sees every week.
+      await channel.send({
+        content: composeAnnouncement(getThemeName(theme), message),
+        allowedMentions: NO_MENTIONS,
+      });
+      console.log('Theme announcement message sent');
+    } catch (msgErr) {
+      console.error(
+        `ERROR sending announcement: ${describeDiscordError(msgErr)}`,
+      );
     }
 
     await setStateIndex(applyIndex);

@@ -36,6 +36,19 @@ describe('auditThemes on a clean list', () => {
   });
 });
 
+// A hand edit is the realistic way in: the modal name field is single line.
+describe('auditThemes reports a hand edited name with a line break', () => {
+  it('reports it as invalid, at its position', () => {
+    const problems = auditThemes([
+      ok('Fine'),
+      { name: 'Weekly theme\npottery', message: 'm' },
+    ]);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatchObject({ position: 2, kind: 'invalid' });
+    expect(problems[0].problem).toMatch('a line break');
+  });
+});
+
 describe('auditThemes finds the entry that would wedge the rotation', () => {
   it('reports an emoji-only name', () => {
     const problems = auditThemes([

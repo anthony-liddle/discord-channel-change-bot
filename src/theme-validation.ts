@@ -1,4 +1,9 @@
 import { canBecomeChannelName, normalizeChannelName } from './channel-name';
+import {
+  HEADING_MARKER,
+  HEADING_SEPARATOR,
+  MAX_ANNOUNCEMENT,
+} from './announcement';
 
 /**
  * Validation for everything that can be written into themes.json.
@@ -45,11 +50,22 @@ export const POSITION_PREFIX_WIDTH = `${MAX_ASSUMED_THEMES}. `.length;
 export const MAX_THEME_NAME = 100 - POSITION_PREFIX_WIDTH;
 
 /**
- * Discord rejects message content over 2000 characters. rotateTheme catches and
- * logs a failed announcement and carries on, so an oversized message renames
- * the channel and then silently posts nothing.
+ * The announcement is the message under a "# <name>" heading, and Discord
+ * rejects a post over 2000 characters. rotateTheme catches and logs a rejected
+ * post and carries on, so an oversized one renames the channel and then
+ * silently posts nothing.
+ *
+ * The message therefore gets what is left after the heading for the longest
+ * legal name: 2000 - 2 for "# " - 95 for the name - 1 for the newline = 1902.
+ * Capping here rather than trimming the post is deliberate. A cap is enforced in
+ * the modal, where the admin sees it; trimming at post time would cut community
+ * writing where nobody sees it happen.
  */
-export const MAX_THEME_MESSAGE = 2000;
+export const MAX_THEME_MESSAGE =
+  MAX_ANNOUNCEMENT -
+  HEADING_MARKER.length -
+  MAX_THEME_NAME -
+  HEADING_SEPARATOR.length;
 
 export function validateThemeName(name: unknown): string {
   if (typeof name !== 'string') {
@@ -62,6 +78,21 @@ export function validateThemeName(name: unknown): string {
 
   if (trimmed.length === 0) {
     throw new Error('Theme name cannot be empty.');
+  }
+
+  // The name is posted as a "# " heading, and a line break inside it ends the
+  // heading and drops the rest of the name into the body. Whitespace of every
+  // kind normalizes into the channel name fine, so nothing else catches it.
+  // Format characters such as the zero width joiner are not in these classes,
+  // which matters because emoji sequences depend on them.
+  const control = /[\p{Cc}\p{Zl}\p{Zp}]/u.exec(trimmed);
+  if (control) {
+    throw new Error(
+      `Theme name contains ${describeControlCharacter(control[0])} at ` +
+        `character ${control.index + 1}. A name is posted as a one line ` +
+        'heading, so it cannot contain line breaks, tabs or other control ' +
+        'characters.',
+    );
   }
 
   if (trimmed.length > MAX_THEME_NAME) {
@@ -96,8 +127,10 @@ export function validateThemeMessage(message: unknown): string {
 
   if (message.length > MAX_THEME_MESSAGE) {
     throw new Error(
-      `Theme message is ${message.length} characters. Discord will not post ` +
-        `more than ${MAX_THEME_MESSAGE} characters, so the announcement would ` +
+      `Theme message is ${message.length} characters. It can be at most ` +
+        `${MAX_THEME_MESSAGE} characters, which leaves room for the theme name ` +
+        `the announcement puts above it. Discord will not post more than ` +
+        `${MAX_ANNOUNCEMENT} characters, so a longer announcement would ` +
         'silently never appear.',
     );
   }
@@ -270,6 +303,25 @@ function displayName(rawName: unknown): string {
 
 function trimForReply(text: string): string {
   return text.length <= 40 ? text : `${text.slice(0, 39)}…`;
+}
+
+/** Every one of these is invisible, so the error has to say which it is. */
+function describeControlCharacter(char: string): string {
+  switch (char) {
+    case '\n':
+    case '\r':
+    case '\u0085':
+    case ' ':
+    case ' ':
+      return 'a line break';
+    case '\t':
+      return 'a tab';
+    default:
+      return (
+        'an invisible control character ' +
+        `(U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')})`
+      );
+  }
 }
 
 function describeType(value: unknown): string {

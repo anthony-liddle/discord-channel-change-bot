@@ -26,7 +26,8 @@ const SAME = [
   ['Monochrome', 'MONOCHROME', 'differs only by case'],
   ['Monochrome', '  Monochrome  ', 'differs only by surrounding whitespace'],
   ['Golden Hour', 'Golden  Hour', 'differs only by repeated inner whitespace'],
-  ['Golden Hour', 'Golden\tHour', 'a tab and a space both become one hyphen'],
+  // A tab used to be here, colliding as a duplicate. A tab is a control
+  // character and is now refused outright, which the describe below pins.
   ['Cafe Night', 'Café Night', 'accent folding makes both cafe-night'],
   ['Macro!', 'Macro', 'punctuation is dropped from a channel name'],
 ] as const;
@@ -92,6 +93,26 @@ describe('the write path and the reload audit agree on what a duplicate is', () 
       expect(auditRejects(a, b)).toBe(false);
     });
   }
+});
+
+// The two paths still have to agree when the answer is "refused" rather than
+// "duplicate", or a name the audit flags could have been accepted by a modal.
+describe('the write path and the reload audit both refuse a tab outright', () => {
+  it('write path refuses "Golden\\tHour" for the tab, not as a duplicate', async () => {
+    setupThemes([{ name: 'Golden Hour', message: 'm' }]);
+    await reloadThemes();
+
+    await expect(addTheme('Golden\tHour', 'm')).rejects.toThrow('a tab');
+  });
+
+  it('reload audit reports "Golden\\tHour" as invalid, not as a duplicate', () => {
+    const problems = auditThemes([
+      { name: 'Golden Hour', message: 'm' },
+      { name: 'Golden\tHour', message: 'm' },
+    ]);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatchObject({ position: 2, kind: 'invalid' });
+  });
 });
 
 describe('updateTheme uses the same duplicate rule as addTheme', () => {

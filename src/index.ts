@@ -1,5 +1,6 @@
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client } from 'discord.js';
 import 'dotenv/config';
+import { CLIENT_OPTIONS } from './client-options';
 import { getConfig, loadConfig } from './config';
 import { loadState } from './state';
 import { scheduleCronJob, stopScheduledTask } from './scheduler';
@@ -16,9 +17,7 @@ if (!token) {
   process.exit(1);
 }
 
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
-});
+const client = new Client(CLIENT_OPTIONS);
 
 client.once('clientReady', async () => {
   loadConfig();

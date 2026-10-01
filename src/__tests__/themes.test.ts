@@ -332,6 +332,61 @@ describe('updateTheme validates before writing', () => {
   });
 });
 
+// A line break in a name splits the announcement heading in two.
+describe('the store refuses a name with a line break', () => {
+  it('addTheme refuses it without writing', async () => {
+    await expect(addTheme('Golden\nHour', 'msg')).rejects.toThrow(
+      'a line break',
+    );
+    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+
+  it('updateTheme refuses it without writing', async () => {
+    await expect(updateTheme(1, 'Golden\nHour', 'msg')).rejects.toThrow(
+      'a line break',
+    );
+    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+});
+
+// The announcement puts "# <name>\n" above the message, which costs up to 98
+// characters of Discord's 2000, so the store caps a message at 1902. Literal
+// lengths on purpose: a test written against the constant passes whatever the
+// constant is.
+describe('the store leaves room in the message for the announcement heading', () => {
+  it('addTheme stores a 1902 character message', async () => {
+    await addTheme('Golden Hour', 'a'.repeat(1902));
+
+    const written = JSON.parse(
+      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
+    );
+    expect(written.themes[3].message).toHaveLength(1902);
+  });
+
+  it('addTheme refuses a 1903 character message without writing', async () => {
+    await expect(addTheme('Golden Hour', 'a'.repeat(1903))).rejects.toThrow(
+      /1902 characters/,
+    );
+    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+
+  it('updateTheme stores a 1902 character message', async () => {
+    await updateTheme(1, 'Golden Hour', 'a'.repeat(1902));
+
+    const written = JSON.parse(
+      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
+    );
+    expect(written.themes[1].message).toHaveLength(1902);
+  });
+
+  it('updateTheme refuses a 1903 character message without writing', async () => {
+    await expect(
+      updateTheme(1, 'Golden Hour', 'a'.repeat(1903)),
+    ).rejects.toThrow(/1902 characters/);
+    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
+  });
+});
+
 // ─── reorderTheme ─────────────────────────────────────────────────────────────
 
 describe('reorderTheme', () => {
