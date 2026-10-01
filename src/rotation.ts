@@ -73,14 +73,9 @@ export async function validatePermissions(
       missingPerms.push('Manage Channels');
     }
 
-    const themes = await getThemes();
-    const hasMessageThemes = themes.some(
-      (t) => typeof t === 'object' && typeof t.message === 'string',
-    );
-    if (
-      hasMessageThemes &&
-      !permissions.has(PermissionFlagsBits.SendMessages)
-    ) {
+    // Unconditional: every rotation that renames the channel posts at least
+    // the theme's name, including for a theme with no message.
+    if (!permissions.has(PermissionFlagsBits.SendMessages)) {
       missingPerms.push('Send Messages (needed for announcements)');
     }
 
@@ -181,17 +176,15 @@ export async function rotateTheme(
     await channel.setName(newName, 'Weekly theme rotation');
     console.log(`Channel renamed to: ${newName}`);
 
-    if (message && typeof message === 'string') {
-      try {
-        // The one place an announcement is posted. The scheduled rotation and
-        // rotate-now both arrive here, so they cannot compose it differently.
-        await channel.send(composeAnnouncement(getThemeName(theme), message));
-        console.log('Theme announcement message sent');
-      } catch (msgErr) {
-        console.error(
-          `ERROR sending announcement: ${describeDiscordError(msgErr)}`,
-        );
-      }
+    try {
+      // The one place an announcement is posted. The scheduled rotation and
+      // rotate-now both arrive here, so they cannot compose it differently.
+      await channel.send(composeAnnouncement(getThemeName(theme), message));
+      console.log('Theme announcement message sent');
+    } catch (msgErr) {
+      console.error(
+        `ERROR sending announcement: ${describeDiscordError(msgErr)}`,
+      );
     }
 
     await setStateIndex(applyIndex);

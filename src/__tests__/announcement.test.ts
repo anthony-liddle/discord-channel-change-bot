@@ -25,6 +25,8 @@ import {
 } from '../theme-validation';
 import { makeScheduledRotation } from '../scheduled-rotation';
 import { rotateNow } from '../commands/rotate-now';
+import { validatePermissions } from '../rotation';
+import { PermissionFlagsBits } from 'discord.js';
 
 beforeEach(() => {
   vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -67,6 +69,50 @@ describe('the announcement leads with the theme name as a heading', () => {
         '**Bold** opener\n\n> a quote\nlast line ',
       ),
     ).toBe('# Weekly theme jazz\n**Bold** opener\n\n> a quote\nlast line ');
+  });
+});
+
+// ─── a theme with no message ──────────────────────────────────────────────────
+
+// Decided: the heading posts on its own. A blank used to mean the channel was
+// renamed and nothing was posted, which left a week with no trace in the
+// channel's history. The name alone still says which theme ran when, and a
+// blank that posts a bare heading is noticed the same week instead of never.
+// Only a hand edit or a legacy string entry can produce one; both modals
+// require a message.
+describe('a theme with no message posts its heading alone', () => {
+  it('posts the heading alone when the message is missing', () => {
+    expect(composeAnnouncement('Weekly theme pottery', undefined)).toBe(
+      '# Weekly theme pottery',
+    );
+  });
+
+  it('posts the heading alone when the message is null', () => {
+    expect(composeAnnouncement('Weekly theme pottery', null)).toBe(
+      '# Weekly theme pottery',
+    );
+  });
+
+  it('posts the heading alone when the message is empty', () => {
+    expect(composeAnnouncement('Weekly theme pottery', '')).toBe(
+      '# Weekly theme pottery',
+    );
+  });
+
+  // Discord refuses a whitespace-only post outright, so today this case is a
+  // send error in the log and nothing in the channel.
+  it('posts the heading alone when the message is only whitespace', () => {
+    expect(composeAnnouncement('Weekly theme pottery', '  \n\t ')).toBe(
+      '# Weekly theme pottery',
+    );
+  });
+
+  // A hand edit can put anything in the file. The reload audit reports it,
+  // but the rotation still reaches it on the Monday it comes up.
+  it('posts the heading alone when a hand edit left a message that is not text', () => {
+    expect(
+      composeAnnouncement('Weekly theme pottery', 42 as unknown as string),
+    ).toBe('# Weekly theme pottery');
   });
 });
 
@@ -189,5 +235,77 @@ describe('the scheduled rotation and rotate-now post the same announcement', () 
     const manual = await postedByRotateNow();
 
     expect(manual).toEqual(scheduled);
+  });
+
+  describe('for a theme with no message', () => {
+    const blank: ThemeEntry[] = [
+      { name: 'Weekly theme origami', message: 'Fold something' },
+      { name: 'Weekly theme pottery', message: '' },
+    ];
+
+    it('posts the heading alone from the scheduled rotation', async () => {
+      vi.mocked(getThemes).mockResolvedValue(blank);
+      expect(await postedByScheduled()).toEqual([['# Weekly theme pottery']]);
+    });
+
+    it('posts the heading alone from rotate-now', async () => {
+      vi.mocked(getThemes).mockResolvedValue(blank);
+      expect(await postedByRotateNow()).toEqual([['# Weekly theme pottery']]);
+    });
+
+    // The oldest data format: a bare string, which never had a message.
+    it('posts the heading alone for a legacy string entry', async () => {
+      vi.mocked(getThemes).mockResolvedValue([
+        'Weekly theme origami',
+        'Weekly theme pottery',
+      ]);
+      expect(await postedByScheduled()).toEqual([['# Weekly theme pottery']]);
+    });
+  });
+});
+
+// ─── the permission the post needs ────────────────────────────────────────────
+
+// The startup check used to demand Send Messages only when some theme had a
+// message, because a list of blanks never posted. Every rename posts now, so a
+// list of blanks with no Send Messages would pass startup and then fail to post
+// every single week.
+describe('the startup check requires Send Messages whatever the messages are', () => {
+  function makeClientLacking(missing: bigint) {
+    const channel = {
+      name: 'weekly-theme-origami',
+      permissionsFor: () => ({ has: (flag: bigint) => flag !== missing }),
+    };
+    return {
+      user: { id: 'bot' },
+      channels: { fetch: vi.fn().mockResolvedValue(channel) },
+    } as unknown as Client;
+  }
+
+  it('fails when the bot cannot send messages and no theme has a message', async () => {
+    vi.mocked(getThemes).mockResolvedValue([
+      { name: 'Weekly theme origami' },
+      'Weekly theme pottery',
+    ]);
+
+    const ok = await validatePermissions(
+      makeClientLacking(PermissionFlagsBits.SendMessages),
+      { channelId: 'theme-channel' },
+    );
+
+    expect(ok).toBe(false);
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Send Messages'),
+    );
+  });
+
+  it('passes when the bot has every permission it needs', async () => {
+    vi.mocked(getThemes).mockResolvedValue([{ name: 'Weekly theme origami' }]);
+
+    const ok = await validatePermissions(makeClientLacking(BigInt(0)), {
+      channelId: 'theme-channel',
+    });
+
+    expect(ok).toBe(true);
   });
 });
