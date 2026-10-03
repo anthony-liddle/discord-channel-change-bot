@@ -77,7 +77,7 @@ Changes take effect in the next rotation that uses this theme.
 
 ### `/theme-bot delete-theme`
 
-Works the same way as `edit-theme`: start typing after `theme:` and pick one of the suggestions. You'll then be asked to confirm before anything is removed — this cannot be undone. The remaining themes stay in their current order.
+Works the same way as `edit-theme`: start typing after `theme:` and pick one of the suggestions. You'll then be asked to confirm before anything is removed; this cannot be undone. The remaining themes stay in their current order, and the rotation carries on where it was: deleting a theme never skips or repeats another one. If you delete the theme that is live this week, the one that was due next still comes up next.
 
 ---
 
@@ -114,7 +114,7 @@ If the channel has already been renamed twice in the last ten minutes, by the bo
 
 ### `/theme-bot reload-config`
 
-Reloads the bot's configuration without needing a restart. Use this if the bot owner has made changes to the timezone settings and you need them to take effect right away.
+Reloads the bot's configuration without needing a restart. Use this if the bot owner has made changes to the timezone settings and you need them to take effect right away. If `config.json` now holds a schedule or timezone the bot cannot use, the reply says so and the previous schedule keeps running until it is fixed.
 
 The reply also tells you three things you cannot see any other way:
 

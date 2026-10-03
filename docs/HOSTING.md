@@ -326,7 +326,10 @@ expected to mean.
 **This is also the lever for making a manual name stick.** Set the entry's
 `name` so it normalizes to exactly what is on the channel, then point
 `currentIndex` at the row _before_ it. The next rotation applies a name the
-channel already has, the rename is skipped, and nothing visibly changes.
+channel already has, the rename is skipped, and nothing visibly changes. For
+the first row, the row before it is the last one: the number of themes minus
+one, never `-1`. The bot only accepts a whole number from 0 up and starts
+fresh at 0 for anything else.
 
 ---
 
@@ -856,8 +859,9 @@ Success: `fly logs` shows `Logged in as ...`, then
 `Current theme index:` with the number you set, then `Bot is ready!`.
 
 **The read-back is the proof. The log line is only corroboration.** When
-`state.json` will not parse, the bot falls back to index 0 and logs a warning
-rather than an error. Since 0 is also a perfectly legitimate value to seed,
+`state.json` will not parse, or parses but holds anything other than a
+`currentIndex` that is a whole number from 0 up (`-1`, `"5"` in quotes, `{}`),
+the bot falls back to index 0 and logs a warning rather than an error. Since 0 is also a perfectly legitimate value to seed,
 `Current theme index: 0` on its own cannot tell a correctly seeded 0 from a file
 that was silently discarded. Check in this order:
 
@@ -866,7 +870,9 @@ that was silently discarded. Check in this order:
    any further.
 2. **No `Warning: Could not parse state.json` line appears in the logs.** That
    warning is the unambiguous signal and it is the thing to grep for. It means
-   the file was unreadable no matter what index is reported afterwards.
+   the file was unusable no matter what index is reported afterwards. When the
+   file parsed but held a bad position, the line goes on to quote what it
+   held.
 3. **`Current theme index:` matches the number in the file you just read back.**
    If the file is right and the log disagrees, the bot did not reload. Restart
    it again.
