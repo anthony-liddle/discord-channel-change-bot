@@ -257,7 +257,7 @@ pm2 startup
 
 ## Rate Limits
 
-Discord limits channel renames to 2 per 10 minutes. The weekly schedule respects this limit, but be careful with manual rotations using `/rotate-now`.
+Discord limits renames of a channel to 2 per 10 minutes, counting renames done by hand. The weekly schedule never comes near it, but a manual rotation soon after other renames can. The bot then waits for Discord's window to clear rather than failing, says so in its reply, and logs the wait. Running the command again during the wait only reports that a rotation is already in progress.
 
 ## License
 
