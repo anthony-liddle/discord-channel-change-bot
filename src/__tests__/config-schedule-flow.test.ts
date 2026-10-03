@@ -83,6 +83,18 @@ async function run(interaction: ReturnType<typeof picker>['interaction']) {
   });
 }
 
+interface Option {
+  value: string;
+  default?: boolean;
+  description?: string;
+}
+
+/** The options that carry a description, as value to description. */
+const described = (options: Option[]) =>
+  Object.fromEntries(
+    options.filter((o) => o.description).map((o) => [o.value, o.description]),
+  );
+
 const contentOf = (fn: ReturnType<typeof vi.fn>) =>
   (fn.mock.calls.at(-1)![0] as { content: string }).content;
 
@@ -118,24 +130,38 @@ describe('picking a new day and time', () => {
     );
   });
 
-  it('shows the current schedule and preselects its day', async () => {
+  // Discord sends nothing when the option picked is already the selected one,
+  // so a preselected current day could not be picked again: keeping the day
+  // and changing only the time was impossible. The current value is labelled
+  // instead of selected.
+  it('marks the current day without preselecting it', async () => {
     const { interaction } = picker(null, null);
 
     await run(interaction);
 
     const first = interaction.reply.mock.calls[0][0] as {
       content: string;
-      components: {
-        toJSON(): {
-          components: { options: { value: string; default?: boolean }[] }[];
-        };
-      }[];
+      components: { toJSON(): { components: { options: Option[] }[] } }[];
     };
     expect(first.content).toContain(
       'every **Monday** at **9:00 AM** (America/Los_Angeles)',
     );
     const options = first.components[0].toJSON().components[0].options;
-    expect(options.filter((o) => o.default).map((o) => o.value)).toEqual(['1']);
+    expect(options.filter((o) => o.default)).toEqual([]);
+    expect(described(options)).toEqual({ '1': 'Current' });
+  });
+
+  it('marks the current time without preselecting it', async () => {
+    const { interaction, dayPick } = picker('1', null);
+
+    await run(interaction);
+
+    const step2 = dayPick.update.mock.calls[0][0] as {
+      components: { toJSON(): { components: { options: Option[] }[] } }[];
+    };
+    const options = step2.components[0].toJSON().components[0].options;
+    expect(options.filter((o) => o.default)).toEqual([]);
+    expect(described(options)).toEqual({ '9': 'Current' });
   });
 
   it('shows a schedule it cannot describe as the raw expression', async () => {

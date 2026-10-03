@@ -76,12 +76,7 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
     .setCustomId(`config-schedule-day:${interaction.user.id}`)
     .setPlaceholder('Select a day')
     .addOptions(
-      DAYS.map((d) =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(d.label)
-          .setValue(d.value)
-          .setDefault(currentParsed?.day === d.value),
-      ),
+      DAYS.map((d) => option(d.label, d.value, currentParsed?.day === d.value)),
     );
 
   const response = await interaction.reply({
@@ -119,10 +114,7 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
     .setPlaceholder('Select a time')
     .addOptions(
       HOURS.map((h) =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(h.label)
-          .setValue(h.value)
-          .setDefault(currentParsed?.hour === h.value),
+        option(h.label, h.value, currentParsed?.hour === h.value),
       ),
     );
 
@@ -172,6 +164,19 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
     components: [],
   });
 };
+
+/**
+ * Labels the current value rather than preselecting it. Discord sends nothing
+ * when the option picked is the one already selected, so a preselected current
+ * day could not be picked again, and keeping it while changing only the time
+ * was impossible.
+ */
+function option(label: string, value: string, isCurrent: boolean) {
+  const built = new StringSelectMenuOptionBuilder()
+    .setLabel(label)
+    .setValue(value);
+  return isCurrent ? built.setDescription('Current') : built;
+}
 
 const TIMED_OUT = {
   content: 'Schedule configuration timed out.',
