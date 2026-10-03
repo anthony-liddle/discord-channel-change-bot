@@ -20,7 +20,10 @@ import type { ThemeEntry } from '../types';
 
 /** The saved theme list, so a re-render reads back what a save wrote. */
 let store: ThemeEntry[] = [];
-/** Rotation position, so following the current theme by name is exercised. */
+/**
+ * Rotation position. A move never changes it; reorder-rotation-position runs
+ * the real state module to prove that, so this only needs reading.
+ */
 let currentIndex = 0;
 
 vi.mock('../themes', () => ({
@@ -33,9 +36,6 @@ vi.mock('../themes', () => ({
 
 vi.mock('../state', () => ({
   getState: vi.fn(() => ({ currentIndex })),
-  saveState: vi.fn(async (state: { currentIndex: number }) => {
-    currentIndex = state.currentIndex;
-  }),
   STATE_PATH: '/tmp/test-state.json',
 }));
 

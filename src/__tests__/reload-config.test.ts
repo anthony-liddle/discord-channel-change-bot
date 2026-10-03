@@ -190,6 +190,21 @@ describe('reloadConfigCmd runtime file dump', () => {
     expect(attachedNames(interaction)).toContain('themes.json');
   });
 
+  // scheduleCronJob now refuses a bad schedule without stopping the running
+  // one. Saying so is the difference between an admin knowing Monday still
+  // happens and guessing.
+  it('says the previous schedule is still running when the new one is invalid', async () => {
+    vi.mocked(scheduleCronJob).mockImplementation(() => {
+      throw new Error('Invalid cron expression');
+    });
+    const interaction = adminInteraction();
+
+    await reloadConfigCmd(interaction, {} as never);
+
+    const reply = interaction.reply.mock.calls[0][0] as { content: string };
+    expect(reply.content).toMatch(/previous schedule is still running/i);
+  });
+
   it('still attaches themes.json when config.json cannot be read', async () => {
     vi.mocked(reloadConfig).mockImplementation(() => {
       throw new Error('config.json not found');

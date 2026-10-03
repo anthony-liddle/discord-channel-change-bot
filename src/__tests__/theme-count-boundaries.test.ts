@@ -10,7 +10,6 @@ vi.mock('../themes', () => ({
 
 vi.mock('../state', () => ({
   getState: vi.fn(() => ({ currentIndex: 0 })),
-  saveState: vi.fn(),
   STATE_PATH: '/tmp/test-state.json',
 }));
 

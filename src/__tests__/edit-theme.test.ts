@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import type { ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
 import type { ThemeEntry } from '../types';
 
 // THEMES_PATH is re-exported through runtime-files.ts via commands/index.ts,
@@ -261,5 +261,41 @@ describe('edit-theme modal scoping', () => {
     expect(submitModal(foreign)).toBe(0);
     await settle();
     expect(updateTheme).not.toHaveBeenCalled();
+  });
+});
+
+describe('edit-theme when nothing is changed', () => {
+  it('says it timed out when the form never comes back', async () => {
+    const a = makeInvocation('inv-A', pick(themes, 0));
+    a.awaitModalSubmit.mockRejectedValueOnce(
+      new Error('Collector received no interactions'),
+    );
+
+    await editThemeCmd(
+      a as unknown as ChatInputCommandInteraction,
+      {} as never,
+    );
+
+    expect(a.followUp).toHaveBeenCalledWith({
+      content: 'Timed out.',
+      flags: MessageFlags.Ephemeral,
+    });
+    expect(updateTheme).not.toHaveBeenCalled();
+  });
+
+  it('says the save failed, with the reason, privately', async () => {
+    vi.mocked(updateTheme).mockRejectedValue(new Error('disk full'));
+    const a = makeInvocation('inv-A', pick(themes, 0));
+    void editThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
+    await settle();
+
+    const submit = makeModalSubmit(modalCustomIdFrom(a), 'Golden Light', 'msg');
+    submitModal(submit);
+    await settle();
+
+    expect(submit.reply).toHaveBeenCalledWith({
+      content: 'Failed to update theme.\n> disk full',
+      flags: MessageFlags.Ephemeral,
+    });
   });
 });

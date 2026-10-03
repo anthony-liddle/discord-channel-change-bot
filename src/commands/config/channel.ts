@@ -1,6 +1,7 @@
 import type { CommandHandler } from '../../types';
 import { requireAdmin } from '../index';
 import { getConfig, saveConfig } from '../../config';
+import { formatHandlerError } from '../../interaction-errors';
 import {
   ActionRowBuilder,
   ChannelSelectMenuBuilder,
@@ -31,25 +32,36 @@ export const configChannel: CommandHandler = async (interaction, context) => {
     fetchReply: true,
   });
 
+  // Only the wait for a pick can time out. A save that failed used to be
+  // reported as a timeout too, while the rotation channel stayed unchanged.
+  let componentInteraction;
   try {
-    const componentInteraction = await response.awaitMessageComponent({
+    componentInteraction = await response.awaitMessageComponent({
       componentType: ComponentType.ChannelSelect,
       filter: (i) => i.customId === `config-channel:${interaction.user.id}`,
       time: 5 * 60 * 1000,
-    });
-
-    const selectedChannelId = componentInteraction.values[0];
-    const config = getConfig();
-    await saveConfig({ ...config, channelId: selectedChannelId });
-
-    await componentInteraction.update({
-      content: `✅ Rotation channel updated to <#${selectedChannelId}>`,
-      components: [],
     });
   } catch {
     await interaction.editReply({
       content: 'Channel selection timed out.',
       components: [],
     });
+    return;
   }
+
+  const selectedChannelId = componentInteraction.values[0];
+  try {
+    await saveConfig({ ...getConfig(), channelId: selectedChannelId });
+  } catch (err) {
+    await componentInteraction.update({
+      content: `Failed to update the rotation channel.\n> ${formatHandlerError(err)}`,
+      components: [],
+    });
+    return;
+  }
+
+  await componentInteraction.update({
+    content: `✅ Rotation channel updated to <#${selectedChannelId}>`,
+    components: [],
+  });
 };

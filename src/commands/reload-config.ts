@@ -184,6 +184,8 @@ export const reloadConfigCmd: CommandHandler = async (interaction) => {
       await interaction.reply({
         content: composeReply(
           `Config reloaded with ${themes.length} themes, but cron schedule is invalid: ${schedule}\n` +
+            'The previous schedule is still running. Fix `schedule` or ' +
+            '`timezone` in config.json and reload again to change it.\n' +
             dump.summary,
           describeThemeProblems(themes),
           await describeAlertPath(interaction, config),

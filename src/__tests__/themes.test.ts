@@ -12,9 +12,11 @@ import fsp from 'fs/promises';
 import {
   addTheme,
   deleteTheme,
+  getThemes,
+  saveThemes,
   updateTheme,
-  reorderTheme,
   reloadThemes,
+  THEMES_PATH,
 } from '../themes';
 import { MAX_THEME_MESSAGE, MAX_THEME_NAME } from '../theme-validation';
 
@@ -387,46 +389,83 @@ describe('the store leaves room in the message for the announcement heading', ()
   });
 });
 
-// ─── reorderTheme ─────────────────────────────────────────────────────────────
+// ─── loading and saving the whole list ────────────────────────────────────────
 
-describe('reorderTheme', () => {
-  it('moves a theme from one position to another', async () => {
-    await reorderTheme(0, 2);
+// A themes.json that will not load becomes an empty list rather than a crash.
+// The rotation then fails with "No themes configured", which the admin alert
+// carries, and reload-config attaches the raw file so it can be repaired.
+describe('loading themes.json', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
 
-    const written = JSON.parse(
-      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
-    );
-    expect(written.themes.map((t: { name: string }) => t.name)).toEqual([
+  const names = (list: unknown[]) =>
+    list.map((t) => (t as { name: string }).name);
+
+  it('loads the list in file order', async () => {
+    expect(names(await reloadThemes())).toEqual([
+      'Monochrome',
       'Macro',
       'Street',
-      'Monochrome',
     ]);
   });
 
-  it('does not change the number of themes', async () => {
-    await reorderTheme(1, 0);
+  it('loads an unparseable file as an empty list, and says so', async () => {
+    vi.mocked(fsp.readFile).mockResolvedValue('{"themes": [' as never);
 
-    const written = JSON.parse(
-      vi.mocked(fsp.writeFile).mock.calls[0][1] as string,
+    expect(await reloadThemes()).toEqual([]);
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Could not retrieve themes'),
     );
-    expect(written.themes).toHaveLength(3);
   });
 
-  it('writes to a .tmp path then renames', async () => {
-    await reorderTheme(0, 1);
+  it('loads a missing file as an empty list', async () => {
+    vi.mocked(fsp.readFile).mockRejectedValue(
+      Object.assign(new Error('no such file'), { code: 'ENOENT' }),
+    );
 
-    const tmpPath = vi.mocked(fsp.writeFile).mock.calls[0][0] as string;
-    const [from, to] = vi.mocked(fsp.rename).mock.calls[0] as [string, string];
-    expect(tmpPath).toContain('.tmp');
-    expect(from).toBe(tmpPath);
-    expect(to).not.toContain('.tmp');
+    expect(await reloadThemes()).toEqual([]);
   });
 
-  it('throws when fromIndex is out of bounds', async () => {
-    await expect(reorderTheme(5, 0)).rejects.toThrow('Index out of bounds');
+  it('loads a file whose themes is not a list as an empty list', async () => {
+    vi.mocked(fsp.readFile).mockResolvedValue('{"themes": {}}' as never);
+
+    expect(await reloadThemes()).toEqual([]);
   });
 
-  it('throws when toIndex is out of bounds', async () => {
-    await expect(reorderTheme(0, 5)).rejects.toThrow('Index out of bounds');
+  it('reads the file once and serves later reads from memory', async () => {
+    vi.mocked(fsp.readFile).mockClear();
+
+    await getThemes();
+    await getThemes();
+
+    expect(fsp.readFile).not.toHaveBeenCalled();
+  });
+});
+
+describe('saveThemes', () => {
+  // Written to a temporary file and renamed into place, so a crash mid-write
+  // leaves the previous themes.json whole: it is the only copy of the
+  // community's writing.
+  it('writes the list atomically through a temporary file', async () => {
+    const list = [{ name: 'Golden Hour', message: 'Shoot at sunset.' }];
+
+    await saveThemes(list);
+
+    expect(fsp.writeFile).toHaveBeenCalledWith(
+      `${THEMES_PATH}.tmp`,
+      JSON.stringify({ themes: list }),
+    );
+    expect(fsp.rename).toHaveBeenCalledWith(`${THEMES_PATH}.tmp`, THEMES_PATH);
+  });
+
+  it('serves the saved list without reading the file back', async () => {
+    const list = [{ name: 'Golden Hour', message: 'Shoot at sunset.' }];
+    vi.mocked(fsp.readFile).mockClear();
+
+    await saveThemes(list);
+
+    expect(await getThemes()).toEqual(list);
+    expect(fsp.readFile).not.toHaveBeenCalled();
   });
 });

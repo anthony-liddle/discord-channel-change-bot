@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import type { ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
 
 vi.mock('../themes', () => ({
   addTheme: vi.fn(),
@@ -209,5 +209,40 @@ describe('add-theme modal scoping', () => {
     expect(submitModal(foreign)).toBe(0);
     await settle();
     expect(addTheme).not.toHaveBeenCalled();
+  });
+});
+
+// The modal is the only way in, so both ways it can end without a theme
+// being added have to say so: the admin closed it, or the write failed.
+describe('add-theme when nothing is added', () => {
+  it('says it timed out when the form never comes back', async () => {
+    const a = makeInvocation('inv-A');
+    a.awaitModalSubmit.mockRejectedValueOnce(
+      new Error('Collector received no interactions'),
+    );
+
+    await addThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
+
+    expect(a.followUp).toHaveBeenCalledWith({
+      content: 'Timed out.',
+      flags: MessageFlags.Ephemeral,
+    });
+    expect(addTheme).not.toHaveBeenCalled();
+  });
+
+  it('says the save failed, with the reason, privately', async () => {
+    vi.mocked(addTheme).mockRejectedValue(new Error('disk full'));
+    const a = makeInvocation('inv-A');
+    void addThemeCmd(a as unknown as ChatInputCommandInteraction, {} as never);
+    await settle();
+
+    const submit = makeModalSubmit(modalCustomIdFrom(a), 'Golden Hour', 'msg');
+    submitModal(submit);
+    await settle();
+
+    expect(submit.reply).toHaveBeenCalledWith({
+      content: 'Failed to save theme.\n> Error: disk full',
+      flags: MessageFlags.Ephemeral,
+    });
   });
 });

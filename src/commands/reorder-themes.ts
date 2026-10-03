@@ -13,8 +13,7 @@ import {
 } from 'discord.js';
 import { requireAdmin } from './index';
 import { getThemes, saveThemes } from '../themes';
-import { getState, saveState } from '../state';
-import { themeNameText } from './theme-picker';
+import { getState } from '../state';
 import {
   applyMove,
   buildReorderPages,
@@ -234,27 +233,20 @@ export const reorderThemesCmd: CommandHandler = async (interaction) => {
     }
 
     try {
-      const state = getState();
-      const trackedName = themeNameText(themes[state.currentIndex]);
+      // applyMove writes the list back around currentIndex and never moves
+      // position 1, so the current theme keeps its file index and the rotation
+      // position needs no update. Looking the current theme up again by name
+      // could only find the same index, or, when an earlier entry shared its
+      // name, the wrong one.
       const reordered = applyMove(
         themes,
-        state.currentIndex,
+        getState().currentIndex,
         move.from,
         move.to,
       );
 
       await saveThemes(reordered);
       themes = await getThemes();
-
-      // The view starts at currentIndex, so moving something to the front
-      // changes which theme sits at that file position. Follow the theme that
-      // was current by name rather than letting the rotation jump.
-      const followed = themes.findIndex(
-        (t) => themeNameText(t) === trackedName,
-      );
-      if (followed >= 0 && followed !== state.currentIndex) {
-        await saveState({ currentIndex: followed });
-      }
 
       notice = `Moved theme ${move.from + 1} to position ${move.to + 1}.`;
       pageIndex = pageContaining(

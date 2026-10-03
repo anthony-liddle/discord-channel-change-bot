@@ -6,10 +6,9 @@ import { loadState } from './state';
 import { scheduleCronJob, stopScheduledTask } from './scheduler';
 import { validatePermissions, getThemeName } from './rotation';
 import { makeScheduledRotation } from './scheduled-rotation';
-import { getCommandHandler, resolveCommandKey } from './commands';
-import { handleThemeAutocomplete } from './commands/theme-autocomplete';
+import { handleInteraction } from './dispatch';
 import { loadThemes } from './themes';
-import { formatHandlerError, reportHandlerError } from './interaction-errors';
+import { formatHandlerError } from './interaction-errors';
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -57,27 +56,9 @@ client.once('clientReady', async () => {
   console.log('Bot is ready!');
 });
 
-client.on('interactionCreate', async (interaction) => {
-  // Autocomplete arrives here too and used to be dropped by the guard below.
-  // It has its own 3 second window, cannot be deferred, and cannot show an
-  // error, so the handler swallows its own failures rather than reporting them.
-  if (interaction.isAutocomplete()) {
-    await handleThemeAutocomplete(interaction);
-    return;
-  }
-
-  if (!interaction.isChatInputCommand()) return;
-
-  const key = resolveCommandKey(interaction);
-  const handler = getCommandHandler(key);
-  if (!handler) return;
-
-  try {
-    await handler(interaction, { client, config: getConfig() });
-  } catch (err) {
-    await reportHandlerError(interaction, err);
-  }
-});
+client.on('interactionCreate', (interaction) =>
+  handleInteraction(interaction, client),
+);
 
 // The dispatch try/catch cannot see a promise nobody awaited. Without this a
 // single floating rejection takes the process down and the cron schedule with
