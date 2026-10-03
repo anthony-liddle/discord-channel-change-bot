@@ -1019,16 +1019,17 @@ it goes last.
    > permission plus channel-level access is what matters. You do not need to
    > drag the bot's role up the list.
 
-8. **Register the slash commands.** From your machine, with the **real**
-   application's credentials in `.env`:
+8. **Register the slash commands.** Run it on the Fly machine, which already
+   holds the real application's token as a secret, so `.env` never has to:
 
    ```bash
-   pnpm build
-   pnpm register
+   fly machine list -a <your-app-name>
+   fly machine exec <machine id> "node /app/dist/register-commands.js" -a <your-app-name>
    ```
 
    See [Appendix B](#appendix-b-what-pnpm-register-does) for exactly what this
-   does. Confirms: typing `/theme-bot` in the server offers the subcommands.
+   does and why it runs there. Confirms: typing `/theme-bot` in the server
+   offers the subcommands.
 
    > Global commands can take up to an hour to appear. If they are missing after
    > five minutes, wait before assuming failure.
@@ -1283,15 +1284,51 @@ the `timezone` field.
 
 ## Appendix B: What pnpm register Does
 
-You will run this yourself for the first time, so it is worth knowing exactly
-what it does before you do.
+It sends the bot's slash command definitions to Discord. It reads
+`DISCORD_TOKEN` and `CLIENT_ID` from the environment and sends the definitions
+in `src/command-definitions.ts`. You only need it when those definitions change,
+such as a new subcommand or option; deploying new handler code does not need
+it, and a PR that does need it says so.
+
+### Registering production: run it on the server
+
+The Fly machine already holds `DISCORD_TOKEN` and `CLIENT_ID` as secrets, and
+every deploy builds `dist/register-commands.js` into the image. So run it there,
+**after** the deploy that changed the commands has landed:
+
+```bash
+fly machine list -a <your-app-name>
+fly machine exec <machine id> "node /app/dist/register-commands.js" -a <your-app-name>
+```
+
+The first command prints the machine ID in its ID column, such as
+`0803136a353ee8`. Success prints `Slash commands registered successfully!`.
+
+Why this way:
+
+- **The token never leaves Fly.** There is nothing to copy, nothing in shell
+  history, and no chance of it landing in `.env`.
+- **It registers the code that is actually running.** The script comes from the
+  deployed image, so the command list cannot get ahead of the deploy.
+  Registering before a deploy lands shows admins a command the running bot
+  cannot answer, which Discord reports as "The application did not respond".
+- **`node`, not `pnpm`.** The image runs the compiled script directly.
+- **`fly machine exec`, not `fly ssh console`.** `exec` goes over Fly's HTTPS
+  API. `ssh` needs the WireGuard tunnel, which has timed out from at least one
+  home network.
+
+If it prints `ERROR: DISCORD_TOKEN not set`, the command did not see the
+machine's secrets. Nothing changed; use the fallback below. This method was
+first used on 2026-10-03 to register `/theme-bot config alerts`.
+
+### Registering the test application
 
 ```bash
 pnpm build && pnpm register
 ```
 
-It reads `DISCORD_TOKEN` and `CLIENT_ID` from the environment, builds the
-command definitions in `register-commands.ts`, and sends them to Discord.
+From your machine this registers whatever `.env` points at, which should always
+be the throwaway test application.
 
 `.env` is a fallback, not the only source. `dotenv` does not overwrite a
 variable that is already set, and it falls back one variable at a time, so an
@@ -1301,8 +1338,11 @@ should stay that way: pointing it at production is what caused the
 2026-09-01 incident where a local process and the Fly machine both answered the
 same interaction.
 
-To register against production without touching `.env`, and without the token
-appearing in shell history, read it from a file:
+### Fallback: registering production from your machine
+
+Only if running it on the server fails. To register against production without
+touching `.env`, and without the token appearing in shell history, read it from
+a file:
 
 ```bash
 pnpm build
@@ -1313,6 +1353,8 @@ Only the `cat` is recorded in history. Global commands can take up to an hour to
 propagate, so a command that has not changed shape yet is expected rather than a
 failure.
 
+### What every registration does
+
 **It is a full replace, not a merge.** The call is an HTTP `PUT` to the
 application's global commands. Discord replaces the entire command list with
 whatever you send. **Any command not in that array is deleted.** There is no
@@ -1320,10 +1362,11 @@ partial update and no way to add one command without sending them all.
 
 Practical consequences:
 
-- Running it with the current `register-commands.ts` gives you exactly the ten
-  subcommands under `theme-bot` and nothing else. The definitions themselves
-  live in `src/command-definitions.ts`, where a test checks each one has a
-  handler.
+- Running it with the current code gives you exactly the ten subcommands under
+  `theme-bot` and nothing else. The definitions live in
+  `src/command-definitions.ts`, where a test checks each one has a handler and
+  pins the full list, so a subcommand cannot be dropped from Discord by
+  accident.
 - Commands are registered **per application**, not per server. Her application
   keeps its own commands until her application is deleted, which you cannot do.
   Removing her bot from the server is what makes them disappear for members.
