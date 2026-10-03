@@ -1,5 +1,6 @@
-import { REST, Routes, SlashCommandBuilder } from 'discord.js';
+import { REST, Routes } from 'discord.js';
 import 'dotenv/config';
+import { COMMAND_DEFINITIONS } from './src/command-definitions';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -13,86 +14,9 @@ function requireEnv(name: string): string {
 const token = requireEnv('DISCORD_TOKEN');
 const clientId = requireEnv('CLIENT_ID');
 
-const commands = [
-  new SlashCommandBuilder()
-    .setName('theme-bot')
-    .setDescription('Theme rotation bot commands')
-    .addSubcommand((sub) =>
-      sub
-        .setName('themes')
-        .setDescription('Preview the upcoming theme rotation'),
-    )
-    .addSubcommand((sub) =>
-      sub
-        .setName('rotate-now')
-        .setDescription('Immediately rotate to the next theme (Admin only)'),
-    )
-    .addSubcommand((sub) =>
-      sub
-        .setName('reload-config')
-        .setDescription(
-          'Reload the config file without restarting (Admin only)',
-        ),
-    )
-    .addSubcommand((sub) =>
-      sub
-        .setName('add-theme')
-        .setDescription(
-          'Add a theme using "Channel Name", and "Theme Message"',
-        ),
-    )
-    // The theme option is the whole reason this file needs re-running. It is
-    // answered by autocomplete, which filters bot side before responding, so
-    // the 25 option ceiling of a select menu stops applying to the theme list.
-    .addSubcommand((sub) =>
-      sub
-        .setName('delete-theme')
-        .setDescription('Delete a theme (Admin only)')
-        .addStringOption((option) =>
-          option
-            .setName('theme')
-            .setDescription('Start typing a theme name or its position number')
-            .setRequired(true)
-            .setAutocomplete(true),
-        ),
-    )
-    .addSubcommand((sub) =>
-      sub
-        .setName('edit-theme')
-        .setDescription('Edit a theme (Admin only)')
-        .addStringOption((option) =>
-          option
-            .setName('theme')
-            .setDescription('Start typing a theme name or its position number')
-            .setRequired(true)
-            .setAutocomplete(true),
-        ),
-    )
-    .addSubcommand((sub) =>
-      sub
-        .setName('reorder-themes')
-        .setDescription('Reorder the theme rotation list (Admin only)'),
-    )
-    .addSubcommandGroup((group) =>
-      group
-        .setName('config')
-        .setDescription('Configure bot settings')
-        .addSubcommand((sub) =>
-          sub
-            .setName('channel')
-            .setDescription(
-              'Set the channel to rename each rotation (Admin only)',
-            ),
-        )
-        .addSubcommand((sub) =>
-          sub
-            .setName('schedule')
-            .setDescription(
-              'Set the day and time for weekly rotations (Admin only)',
-            ),
-        ),
-    ),
-].map((command) => command.toJSON());
+// Defined in src so a test can check them against the router; see the
+// comment there.
+const commands = COMMAND_DEFINITIONS;
 
 const rest = new REST({ version: '10' }).setToken(token);
 
