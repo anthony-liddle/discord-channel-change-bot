@@ -120,6 +120,26 @@ describe('picking a new day and time', () => {
     );
   });
 
+  // The picker stays open for up to ten minutes. Saving the config the
+  // command opened with would silently undo a /theme-bot config channel or
+  // config alerts change made in the meantime.
+  it('keeps a change another command made while the picker was open', async () => {
+    const { interaction } = picker('1', '8');
+    const changedMeanwhile: Config = {
+      ...config,
+      channelId: '333333333333333333',
+      adminChannelId: '444444444444444444',
+    };
+    vi.mocked(getConfig).mockReturnValue(changedMeanwhile);
+
+    await run(interaction);
+
+    expect(saveConfig).toHaveBeenCalledWith({
+      ...changedMeanwhile,
+      schedule: '0 8 * * 1',
+    });
+  });
+
   it('confirms the new schedule in words', async () => {
     const { interaction, hourPick } = picker('5', '20');
 
