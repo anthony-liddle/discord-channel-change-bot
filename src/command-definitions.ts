@@ -98,6 +98,13 @@ export const COMMAND_DEFINITIONS: RESTPostAPIChatInputApplicationCommandsJSONBod
               .setDescription(
                 'Set the day and time for weekly rotations (Admin only)',
               ),
+          )
+          .addSubcommand((sub) =>
+            sub
+              .setName('alerts')
+              .setDescription(
+                'Set the private channel for rotation alerts (Admin only)',
+              ),
           ),
       )
       .toJSON(),

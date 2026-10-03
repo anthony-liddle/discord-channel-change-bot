@@ -37,6 +37,7 @@ describe('the registered commands and the router agree', () => {
   it('registers exactly the commands the bot serves', () => {
     expect(registeredKeys()).toEqual([
       'theme-bot:add-theme',
+      'theme-bot:config:alerts',
       'theme-bot:config:channel',
       'theme-bot:config:schedule',
       'theme-bot:delete-theme',

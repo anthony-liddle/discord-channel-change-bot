@@ -10,6 +10,7 @@ import { reloadConfigCmd } from './reload-config';
 import { addThemeCmd } from './add-theme';
 import { configChannel } from './config/channel';
 import { configSchedule } from './config/schedule';
+import { configAlerts } from './config/alerts';
 import { deleteThemeCmd } from './delete-theme';
 import { editThemeCmd } from './edit-theme';
 import { reorderThemesCmd } from './reorder-themes';
@@ -48,6 +49,7 @@ const commands: Record<string, CommandHandler> = {
   'theme-bot:add-theme': addThemeCmd,
   'theme-bot:config:channel': configChannel,
   'theme-bot:config:schedule': configSchedule,
+  'theme-bot:config:alerts': configAlerts,
   'theme-bot:delete-theme': deleteThemeCmd,
   'theme-bot:edit-theme': editThemeCmd,
   'theme-bot:reorder-themes': reorderThemesCmd,
