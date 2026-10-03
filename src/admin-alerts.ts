@@ -146,6 +146,8 @@ export type AlertProbe =
 export async function probeAlertChannel(
   client: Client,
   config: Config,
+  /** The command doing the check, named in the test line it posts. */
+  checkedBy = '/theme-bot reload-config',
 ): Promise<AlertProbe> {
   const channelId = readChannelId(config);
   if (!channelId) return { status: 'not-configured' };
@@ -153,7 +155,7 @@ export async function probeAlertChannel(
   const outcome = await postToAdminChannel(
     client,
     config,
-    'Alert path checked by `/theme-bot reload-config`. Rotation problems will appear here.',
+    `Alert path checked by \`${checkedBy}\`. Rotation problems will appear here.`,
   );
 
   if (outcome.ok) return { status: 'posted', channelId };
@@ -218,7 +220,7 @@ function cap(text: string): string {
  * A hand edited config.json can put anything here, and this function is the one
  * place that must not throw, so the id is not trusted to be a string.
  */
-function readChannelId(config: Config): string | null {
+export function readChannelId(config: Config): string | null {
   const raw = (config as { adminChannelId?: unknown }).adminChannelId;
   if (typeof raw !== 'string') return null;
   const trimmed = raw.trim();

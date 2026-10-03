@@ -36,6 +36,7 @@ All commands are slash commands under `/theme-bot`. Type `/theme-bot` in any cha
 | `/theme-bot reload-config`   | Admins only    |
 | `/theme-bot config channel`  | Admins only    |
 | `/theme-bot config schedule` | Admins only    |
+| `/theme-bot config alerts`   | Admins only    |
 
 ---
 
@@ -139,9 +140,21 @@ Opens a two-step picker to set when the weekly rotation runs:
 1. **Pick a day** — choose the day of the week (e.g. Saturday)
 2. **Pick a time** — choose the hour (e.g. 9:00 AM)
 
-The current schedule is pre-selected so you can see what's configured. The change takes effect immediately — the next rotation will run at the new day and time.
+The current day and time are marked **Current**, and you can pick them again to keep them. The change takes effect immediately: the next rotation will run at the new day and time.
 
 > **Note:** All schedule times use the timezone configured by the bot owner (shown alongside the current schedule). To change the timezone, contact the bot owner.
+
+---
+
+### `/theme-bot config alerts`
+
+Sets the private channel where the bot reports rotation problems, and whether it also posts a line there on every successful rotation. The reply is only visible to you and starts by saying where alerts go now. Then do one of these:
+
+- **Pick a channel.** The bot refuses the channel it renames, and any channel everyone in the server can read, because every alert and weekly notice would be posted for all of them. Otherwise it posts a test line in the channel first and only saves it if the line arrives. If it says it could not post, give the bot View Channel and Send Messages in that channel and pick it again.
+- **Turn weekly notices off** (or back on). Failures are reported either way.
+- **Turn alerts off.** A failed rotation then shows only in the host logs, which nobody on the admin team can read.
+
+The buttons stay greyed out until a channel is set. The change applies from the next rotation.
 
 ---
 
@@ -152,6 +165,6 @@ The current schedule is pre-selected so you can see what's configured. The chang
 - **The bot needs the right permissions** — if it ever stops renaming the channel, check that it still has `Manage Channels` and `Send Messages` permissions in that channel.
 - **Discord rate limits channel renames** to 2 per 10 minutes, and renames done by hand count. The weekly schedule respects this, but avoid using `/theme-bot rotate-now` in quick succession. If you do run into it, see `rotate-now` above: the bot waits and finishes by itself.
 - **Theme name and message limits** are 95 characters for a name and 1902 for a message. The forms stop you going over rather than failing afterwards. The name limit leaves room for the position number shown in front of each theme, both in the autocomplete suggestions and in the `reorder-themes` list. The message limit leaves room for the name heading: Discord will not post more than 2000 characters in one message, and the heading can take up to 98.
-- **If a scheduled rotation fails**, the bot posts about it in the admin channel, if the bot owner has configured one. A failed rotation does not skip the theme: the channel keeps its old name and the same theme is tried again on the next run, so nothing is lost from the queue.
-- **The bot also posts a line on every successful rotation**, so the admin channel gets a message every week either way. That is deliberate: it means silence is evidence that something is wrong rather than something you have to interpret, and it re-proves every week that the alert channel still works. The bot owner can turn the weekly success line off without turning failure alerts off with it.
-- **Checking the alert channel** is what `/theme-bot reload-config` does. It posts a test line and tells you whether it arrived. An alert channel the bot cannot post in is worse than none, because it gets relied on, so it is worth running after any permission change. It also warns if the alert channel has been set to the same channel the bot renames, which would put every alert and weekly notice in front of the whole server.
+- **If a scheduled rotation fails**, the bot posts about it in the admin channel, if one is set with `/theme-bot config alerts`. A failed rotation does not skip the theme: the channel keeps its old name and the same theme is tried again on the next run, so nothing is lost from the queue.
+- **The bot also posts a line on every successful rotation**, so the admin channel gets a message every week either way. That is deliberate: it means silence is evidence that something is wrong rather than something you have to interpret, and it re-proves every week that the alert channel still works. `/theme-bot config alerts` can turn the weekly success line off without turning failure alerts off with it.
+- **Checking the alert channel** is what `/theme-bot reload-config` does, and `/theme-bot config alerts` does the same check whenever you pick a channel. It posts a test line and tells you whether it arrived. An alert channel the bot cannot post in is worse than none, because it gets relied on, so it is worth running after any permission change. It also warns if the alert channel has been set to the same channel the bot renames, which would put every alert and weekly notice in front of the whole server.

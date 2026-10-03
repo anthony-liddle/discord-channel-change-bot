@@ -1320,8 +1320,10 @@ partial update and no way to add one command without sending them all.
 
 Practical consequences:
 
-- Running it with the current `register-commands.ts` gives you exactly the nine
-  subcommands under `theme-bot` and nothing else.
+- Running it with the current `register-commands.ts` gives you exactly the ten
+  subcommands under `theme-bot` and nothing else. The definitions themselves
+  live in `src/command-definitions.ts`, where a test checks each one has a
+  handler.
 - Commands are registered **per application**, not per server. Her application
   keeps its own commands until her application is deleted, which you cannot do.
   Removing her bot from the server is what makes them disappear for members.

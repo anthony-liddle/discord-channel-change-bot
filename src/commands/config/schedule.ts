@@ -140,15 +140,20 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
   }
 
   const newCron = `0 ${hourInteraction.values[0]} * * ${selectedDay}`;
+  // Read now, not when the picker opened. It can stay open for ten minutes,
+  // and saving the config it opened with silently undid any channel or alert
+  // change another command made in the meantime.
+  const current = getConfig();
+  const zone = current.timezone ?? timezone;
 
   try {
-    await saveConfig({ ...config, schedule: newCron });
+    await saveConfig({ ...current, schedule: newCron });
     // The same callback index.ts and reload-config schedule. An inline copy
     // here used to skip the admin alerts, so changing the schedule turned
     // them off until the next restart.
     scheduleCronJob(
       newCron,
-      timezone,
+      zone,
       makeScheduledRotation(context.client, getConfig),
     );
   } catch (err) {
@@ -160,7 +165,7 @@ export const configSchedule: CommandHandler = async (interaction, context) => {
   }
 
   await hourInteraction.update({
-    content: `✅ Schedule updated to: ${formatSchedule(newCron, timezone)}`,
+    content: `✅ Schedule updated to: ${formatSchedule(newCron, zone)}`,
     components: [],
   });
 };
