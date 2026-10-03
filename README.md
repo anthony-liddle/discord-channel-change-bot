@@ -75,6 +75,11 @@ A Discord bot that automatically renames a designated channel on a weekly schedu
    If it matches `channelId`, the alerts and weekly notices go into the public
    theme channel; `/theme-bot reload-config` warns when it spots that.
 
+   Both alert settings can also be changed from Discord with
+   `/theme-bot config alerts`, which refuses the theme channel and any channel
+   everyone can read, and saves a channel only after a test line arrives
+   there.
+
    `adminSuccessNotices` defaults to `true` and posts one line on every
    successful rotation as well. That makes silence in the alert channel
    evidence rather than ambiguity, and re-proves the alert path weekly instead
