@@ -610,9 +610,9 @@ near the real one.
 
 ### 6.6 Testing Rotations, And The Rate Limit
 
-**Discord allows two channel renames per ten minutes.** Exceed it and further
-renames are refused until the window clears, which is easy to trip while
-testing and annoying to wait out.
+**Discord allows two renames of a channel per ten minutes**, counting renames
+done by hand. A third is held until the window clears, which is easy to trip
+while testing and annoying to wait out.
 
 Practical rules:
 
@@ -621,9 +621,13 @@ Practical rules:
 - A rotation where the channel already has the target name logs
   `Channel already named "x", skipping rename` and costs nothing, because the
   bot skips the API call entirely.
-- If you do hit the limit, `/theme-bot rotate-now` reports the failure back to
-  you in Discord and your terminal shows a `429` status. Wait it out. Nothing is
-  broken.
+- If you do hit the limit, the rename is not refused. The bot waits for the
+  window to clear, up to ten minutes, then finishes the rotation by itself.
+  `/theme-bot rotate-now` edits its reply to say it is waiting and roughly how
+  long, and the terminal logs the wait; see
+  [Appendix A](#a-rename-waiting-on-discords-limit). Running the command again
+  during the wait only says a rotation is already in progress. Wait it out.
+  Nothing is broken.
 
 ---
 
@@ -1220,11 +1224,32 @@ finished, not that it worked. The `ERROR` line is the signal. Common codes:
   what her orphaned instance will now be logging forever.
 - `10003 Unknown Channel`: `channelId` in `config.json` is wrong, or the channel
   was deleted.
-- `429`: rate limited. Two renames per ten minutes.
+
+A rate limit is not on this list, because a rate-limited rename does not fail.
+See the next section.
 
 **Important: the state does not advance when the rename fails.** The index only
 saves after a successful rename, so a failed week retries the same theme rather
 than skipping it.
+
+### A Rename Waiting On Discord's Limit
+
+```
+[2026-10-05T15:00:00.123Z] Starting rotation
+Rate limited by Discord on PATCH /channels/:id (123456789, shared scope). Waiting 600s, then retrying.
+Channel renamed to: weekly-theme-example
+```
+
+Not a failure. Discord allows two renames of a channel per ten minutes, renames
+by hand included, and holds a third until the window clears. The bot waits
+rather than giving up, so `Channel renamed to:` arrives up to ten minutes after
+the `Rate limited` line and the rotation carries on from there. On the live
+server the usual cause is a `/theme-bot rotate-now` shortly after a mod renamed
+the channel by hand. The weekly schedule does not hit it on its own.
+
+Other routes can log the same kind of line. Interaction replies appear as
+`/webhooks/:id/:token/...` with no ids, because those ids include the
+interaction's token.
 
 ### A Rename That Worked But No Announcement
 
